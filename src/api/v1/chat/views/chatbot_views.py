@@ -1,13 +1,15 @@
-from fastapi import APIRouter, status, Request, Header, Depends, Query
+from fastapi import APIRouter, status, Request, Header, Depends, Query, HTTPException
 from typing import List
 from config.config import settings
 from src.api.v1.chat.schemas.schema import Payload , Message,RetrivePaylaod
-from src.api.v1.chat.services.mongo_services import chatbot_insert_message , fetch_question_data_from_mongo , update_message
-from src.api.v1.chat.services.chatbot_services import get_question_field_map_resposne , save_respose_db
+from src.api.v1.chat.services.mongo_services import chatbot_insert_message , fetch_question_data_from_mongo 
+from src.api.v1.chat.services.chatbot_services import create_message, construct_response , get_question_field_map_resposne ,\
+update_latest_message,save_respose_db
 from database.db_mongo_connect import MongoUnitOfWork
 from database.db_connection import get_service_db_session
 from datetime import datetime
 from pymongo import DESCENDING
+
 
 router = APIRouter(prefix="/statistic")
 
@@ -55,6 +57,7 @@ async def insert_chatbot_conversation(request: Request, scr: List[Message], lang
 
 
 
+
 @router.post("/chatbot/dynamic_chatbot_conversation", summary="Dynamic chatbot conversation",
              status_code=status.HTTP_200_OK)
 async def dynamic_chatbot_conversation(request: Request, scr: Payload, language_id: str = Header(1)):
@@ -64,6 +67,7 @@ async def dynamic_chatbot_conversation(request: Request, scr: Payload, language_
     try:
         language_id = int(request.headers.get('language-id', '1'))
 
+        # Database credentials and sessions
         service_db_credentials = {
             "username": settings.SERVICE_DB_USER,
             "password": settings.SERVICE_DB_PASSWORD,
@@ -75,63 +79,39 @@ async def dynamic_chatbot_conversation(request: Request, scr: Payload, language_
 
         client, db = MongoUnitOfWork().mdb_connect()
         user_collection = "user_data"
-        time_now = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
-        def create_message(question_key: int) -> dict:
-            return {
-                "room_id": scr.room_id,
-                "sender_id": scr.sender_id,
-                "message": fetch_question_data_from_mongo(question_key=question_key),
-                "created_at": time_now
-            }
+        latest_message = db[user_collection].find_one(
+            {"room_id": scr.room_id}, sort=[("created_at", DESCENDING)]
+        )
 
         if scr.question_key == 1 and scr.msg_type is None:
-            ques = create_message(scr.question_key)
+            ques = create_message(scr, scr.question_key)
             db[user_collection].insert_one(ques)
             if "_id" in ques:
                 ques["_id"] = str(ques["_id"])
-            res = {
-                    "room_id": scr.room_id,
-                    "sender_id": scr.sender_id,
-                    "message": fetch_question_data_from_mongo(
-                        question_key=scr.question_key
-                    )
-                }
-            return res
 
-        elif scr.msg_type == 2:
-            latest_message = db[user_collection].find_one(
-                {"room_id": scr.room_id}, sort=[("created_at", DESCENDING)]
-            )
-
+        elif scr.msg_type in [1, 2]:
+            #UPDATE THE RESPOSNE TO MONGO
             if latest_message:
-                update_values = {
-                    "message.response": "Yes",
-                    "message.response_time": time_now
-                }
-                db[user_collection].update_one(
-                    {"_id": latest_message["_id"]}, {"$set": update_values}
-                )
+                update_latest_message(db, latest_message, scr.message, user_collection)
+            
+            #INSERT QUESTION TO MONGO
+            ques = create_message(scr, scr.question_key)
+            db[user_collection].insert_one(ques)
+            if "_id" in ques:
+                ques["_id"] = str(ques["_id"])
 
-                ques = create_message(scr.question_key)
-                db[user_collection].insert_one(ques)
-                if "_id" in ques:
-                    ques["_id"] = str(ques["_id"])
+            #SAVE RESPOSNE TO DATABASE
+            response = await get_question_field_map_resposne(service_db_session=service_db_session ,question_key = scr.question_key)
+            if response:
+                ques["id"] = scr.id
+                ques["response"] = scr.message
+                ques["current_question_id"] = scr.current_question_id
+                user_details = await save_respose_db(service_db_session=service_db_session ,question_data=ques,response=response)
 
-                res = {
-                    "room_id": scr.room_id,
-                    "sender_id": scr.sender_id,
-                    "message": fetch_question_data_from_mongo(
-                        question_key=scr.question_key
-                    )
-                }
-                return res
-
-        return {"error": "Invalid input"}
-
+        return construct_response(scr, scr.question_key)
     except Exception as e:
-        return {"error": str(e)}
-
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/chatbot/retrive_conversation", summary="dynamic chatbot conversation",
