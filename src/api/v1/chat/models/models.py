@@ -15,8 +15,7 @@ class UserResponse(Base):
     __tablename__ = "user_resposne"
 
     id = Column(Integer, primary_key=True,unique=True ,  index=True)
-    user_res = Column(String)
-    user_class =  Column(String)
-    user_name = Column(String)
-    user_region= Column(String)
-    user_int= Column(String)
+    email = Column(String)
+    product_category =  Column(String)
+    price = Column(String)
+    product= Column(String)
