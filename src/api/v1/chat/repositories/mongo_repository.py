@@ -14,6 +14,18 @@ async def chatbot_update_data(db, collection_name: str, query: dict,update_value
 
 
 async def insert_data(db, collection_name: str, data: dict):
+    """
+    Docstring for insert_data
+    
+    :param db: Description
+    :type db: 
+    :param collection_name: Description
+    :type collection_name: str
+    :param data: Description
+    :type data: dict
+    :return: Description
+    :rtype: Any
+    """
     try:
         collection = db[collection_name]
         res = collection.insert_one(data)
@@ -25,9 +37,16 @@ async def insert_data(db, collection_name: str, data: dict):
 
 
 def get_question_key_data(question_key):
-
+    """
+    Docstring for get_question_key_data
+    
+    :param question_key: Description
+    :type question_key: 
+    :return: Description
+    :rtype: Any | None
+    """
     client, db = MongoUnitOfWork().mdb_connect()
-    copilot_collection  = "demo_for_image" 
+    copilot_collection  = "demo" 
     question_data = db[copilot_collection].find_one({"message": {"$elemMatch": {"question_key": question_key }}},
                             {"message.$": 1, "_id": 0})
     return question_data

@@ -4,6 +4,16 @@ from database.unit_of_work import SqlAlchemyUnitOfWork
 
 
 async def get_question(db:Session, question_key : int):
+    """
+    Docstring for get_question
+    
+    :param db: Description
+    :type db: Session
+    :param question_key: Description
+    :type question_key: int
+    :return: Description
+    :rtype: Row[Tuple[int, str]] | Any | None
+    """
     try:
         with SqlAlchemyUnitOfWork(db) as db:
 
@@ -20,13 +30,23 @@ async def get_question(db:Session, question_key : int):
 
 
 async def save_user_response(db: Session, question_data: dict, response: dict):
+    """
+    Docstring for save_user_response
+    
+    :param db: Description
+    :type db: Session
+    :param question_data: Description
+    :type question_data: dict
+    :param response: Description
+    :type response: dict
+    :return: Description
+    :rtype: UserResponse | Any
+    """
     try:
         with SqlAlchemyUnitOfWork(db) as db:
             question_key = question_data["message"]["question_key"]
-            if question_key == 2:
-                current_question_key = question_data["message"]["question_key"]
-            else:
-                current_question_key = question_data.get("current_question_id") if question_key != 1 else question_key
+        
+            current_question_key = question_data.get("current_question_id") if question_key != 1 else question_key
 
             question_field_map = (
                 db.query(QuestionFieldsMap)

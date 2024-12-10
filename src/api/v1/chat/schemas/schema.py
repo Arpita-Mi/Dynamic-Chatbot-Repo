@@ -12,25 +12,8 @@ class Message(BaseModel):
     response_time :datetime = None
     next_question: Optional[Dict[str, int]] = None  
     options: Optional[List[Dict[str,str]]] = None
-    # options_response: Optional[List[str]] = None
-    # statistic_id: int
-    # current_sequence_id: int
+  
 
-
-class ChatMessage(BaseModel):
-    room_id: str
-    sender_id: str
-    message: Message
-    content_type: int
-    attachment: Optional[str] = None
-    is_read_by: List[str] = []
-    is_edited: Optional[bool] = None
-    deleted_at: Optional[datetime] = None
-    created_at: datetime = datetime.now()
-    updated_at: datetime = datetime.now()
-
-class MessageInDB(Message):
- id: str
 
 
 class Payload(FormValidation):

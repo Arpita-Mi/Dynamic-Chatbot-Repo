@@ -6,7 +6,7 @@ from config.config import settings
 from src.api.v1.chat.schemas.schema import Payload , Message,RetrivePaylaod
 from src.api.v1.chat.services.mongo_services import chatbot_insert_message , fetch_question_data_from_mongo 
 from src.api.v1.chat.services.chatbot_services import create_message, construct_response , get_question_field_map_resposne ,\
-update_latest_message,save_respose_db , update_latest_message_with_image , generate_image_url
+update_latest_message,save_respose_db , update_latest_message_with_image , generate_image_url , get_question_data_from_room
 from database.db_mongo_connect import MongoUnitOfWork
 from database.db_connection import get_service_db_session
 from datetime import datetime
@@ -18,9 +18,10 @@ router = APIRouter(prefix="/statistic")
 
 @router.post("/chatbot/insert_chatbot_conversation", summary="save chatbot conversation",
              status_code=status.HTTP_200_OK)
+
 async def insert_chatbot_conversation(request: Request, scr: List[Message], language_id: str = Header(None)):
     """
-    API to conversation with Copilots Question.
+    API to Insert Question paylaod
     """
     language_id = int(request.headers.get('language-id', '1'))
     try:  
@@ -65,7 +66,7 @@ async def dynamic_chatbot_conversation(request: Request, scr: Form = Depends(Pay
                                    image :List[UploadFile]=File(None) 
                                 ):
     """
-    API to retrieve chatbot conversation by question key and save dynamic response.
+    API to retrieve chatbot conversation by msg_type and save dynamic response.
     """
     try:
         language_id = int(request.headers.get('language-id', '1'))
@@ -91,6 +92,13 @@ async def dynamic_chatbot_conversation(request: Request, scr: Form = Depends(Pay
             db[user_collection].insert_one(ques)
             if "_id" in ques:
                 ques["_id"] = str(ques["_id"])
+
+            response = await get_question_field_map_resposne(service_db_session=service_db_session ,question_key = scr.question_key)
+            if response:
+                ques["id"] = scr.id
+                ques["response"] = scr.message
+                ques["current_question_id"] = scr.current_question_id
+                user_details = await save_respose_db(service_db_session=service_db_session ,question_data=ques,response=response)
 
         elif scr.msg_type in [1, 2 ,3,4]:     #[1:text , 2:boolean , 3:multiple selection]
             #UPDATE THE RESPOSNE TO MONGO
@@ -144,22 +152,14 @@ async def dynamic_chatbot_conversation(request: Request, scr: Form = Depends(Pay
         raise HTTPException(status_code=500, detail=str(e))
 
 
+
+
+
+
 @router.get("/chatbot/retrive_conversation", summary="dynamic chatbot conversation",
             status_code=status.HTTP_200_OK)
 async def retrive_convsersation(request: Request, room_id :int ,language_id: str = Header(1)):
     room_list = get_question_data_from_room(room_id)
-    return room_list
-
-
-
-
-
-def get_question_data_from_room(room_id):
-    client, db = MongoUnitOfWork().mdb_connect()
-    user_collection  =  "user_data"
-    room_data = db[user_collection].find({"room_id": room_id },
-                            {"room_id":0 ,"_id": 0})
-    room_list = list(room_data)
     return room_list
 
 
