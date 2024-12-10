@@ -27,7 +27,7 @@ async def insert_data(db, collection_name: str, data: dict):
 def get_question_key_data(question_key):
 
     client, db = MongoUnitOfWork().mdb_connect()
-    copilot_collection  = "online_shopping_chatbot" 
+    copilot_collection  = "demo_for_image" 
     question_data = db[copilot_collection].find_one({"message": {"$elemMatch": {"question_key": question_key }}},
                             {"message.$": 1, "_id": 0})
     return question_data

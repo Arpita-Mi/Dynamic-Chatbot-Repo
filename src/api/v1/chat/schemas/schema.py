@@ -1,8 +1,8 @@
-from fastapi import Query
-from pydantic import BaseModel
-from typing import List, Optional, Dict
+from fastapi import Query, Form
+from pydantic import BaseModel 
+from typing import List, Optional, Dict  
 from datetime import datetime
-
+from field_validation.form_validation import FormValidation
 
 class Message(BaseModel):
     question_key: int
@@ -33,14 +33,25 @@ class MessageInDB(Message):
  id: str
 
 
-class Payload(BaseModel):
-    room_id : Optional[int] = None
-    sender_id :Optional[int] = None
-    id :  Optional[int] = None
-    message: Optional[str] = None
-    question_key :int
-    current_question_id : Optional[int] = None
-    msg_type : Optional[int] = None
+class Payload(FormValidation):
+
+    def __init__(self,
+    room_id : int = Form(None),
+    sender_id :int = Form(None),
+    id :  int = Form(None),
+    message: str = Form(None),
+    question_key :int =  Form(),
+    current_question_id : int = Form(None),
+    msg_type : int = Form(None)):
+        self.room_id = room_id
+        self.sender_id =  sender_id
+        self.id = id
+        self.message = message
+        self.question_key = question_key
+        self.current_question_id = current_question_id
+        self.msg_type = msg_type
+
+
 
 class RetrivePaylaod(BaseModel):
    room_id : int

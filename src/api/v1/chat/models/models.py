@@ -19,3 +19,6 @@ class UserResponse(Base):
     product_category =  Column(String)
     price = Column(String)
     product= Column(String)
+    selected_product = Column(String)
+    urls = Column(JSON)
+    Thanks = Column(String)
