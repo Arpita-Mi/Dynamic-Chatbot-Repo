@@ -30,6 +30,12 @@ async def chatbot_update_message(db, collection_name, message_id: str, current_q
 
 
 def fetch_question_data_from_mongo(question_key):
+    """    
+    :param question_key: Description
+    :type question_key: 
+    :return: Description
+    :rtype: Any | None
+    """
     question_data = get_question_key_data(question_key)
     if question_data:
         list_question = question_data.get("message")

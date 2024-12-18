@@ -1,12 +1,11 @@
-from fastapi import APIRouter, status, Request, Header, Depends, Query, HTTPException, UploadFile , File,\
-Form 
+from fastapi import APIRouter, status, Request, Header, Depends, Query, HTTPException, UploadFile , File,Form 
 from typing import List
-import base64
 from config.config import settings
 from src.api.v1.chat.schemas.schema import Payload , Message,RetrivePaylaod
 from src.api.v1.chat.services.mongo_services import chatbot_insert_message , fetch_question_data_from_mongo 
 from src.api.v1.chat.services.chatbot_services import create_message, construct_response , get_question_field_map_resposne ,\
 update_latest_message,save_respose_db , update_latest_message_with_image , generate_image_url , get_question_data_from_room
+from src.api.v1.chat.constants import constant
 from database.db_mongo_connect import MongoUnitOfWork
 from database.db_connection import get_service_db_session
 from datetime import datetime
@@ -81,7 +80,7 @@ async def dynamic_chatbot_conversation(request: Request, scr: Form = Depends(Pay
         service_db_session = await get_service_db_session(service_db_credentials)
 
         client, db = MongoUnitOfWork().mdb_connect()
-        user_collection = "user_data"
+        user_collection = constant.USER_COLLECTION
 
         latest_message = db[user_collection].find_one(
             {"room_id": scr.room_id}, sort=[("created_at", DESCENDING)]
@@ -100,7 +99,7 @@ async def dynamic_chatbot_conversation(request: Request, scr: Form = Depends(Pay
                 ques["current_question_id"] = scr.current_question_id
                 user_details = await save_respose_db(service_db_session=service_db_session ,question_data=ques,response=response)
 
-        elif scr.msg_type in [1, 2 ,3,4]:     #[1:text , 2:boolean , 3:multiple selection]
+        elif scr.msg_type in [1, 2 ,3, 4]:     #[1:text , 2:boolean , 3:multiple selection]
             #UPDATE THE RESPOSNE TO MONGO
             if latest_message:
                 update_latest_message(db, latest_message, scr.message, user_collection)

@@ -2,6 +2,7 @@ from src.api.v1.chat.repositories.chatbot_repository import get_question,save_us
 from src.api.v1.chat.schemas.schema import Payload
 from src.api.v1.chat.services.mongo_services import fetch_question_data_from_mongo
 from database.db_mongo_connect import MongoUnitOfWork
+from src.api.v1.chat.constants import constant
 from datetime import datetime
 
 async def get_question_field_map_resposne(question_key :int , service_db_session = None):
@@ -149,14 +150,12 @@ def generate_image_url(image_data) -> str:
     Generate an image name and URL for the uploaded image.
     """
     image_list = []
-    base_url = "https://example.com/images"  
+    base_url = constant.IMAGE_BASE_URL
     for img_data in image_data:
         extension = (img_data.filename)  
         image_name = f"{extension}"
-        print(f"Image Name {image_name}")
         image_url = f"{base_url}/{image_name}"
         image_list.append({"image_name" : image_name, "image_url" : image_url})
-        print(f"Image_URL {image_url}")
     return image_list
 
 
@@ -171,7 +170,7 @@ def get_question_data_from_room(room_id):
     :rtype: list
     """
     client, db = MongoUnitOfWork().mdb_connect()
-    user_collection  =  "user_data"
+    user_collection  =  constant.USER_COLLECTION
     room_data = db[user_collection].find({"room_id": room_id },
                             {"room_id":0 ,"_id": 0})
     room_list = list(room_data)

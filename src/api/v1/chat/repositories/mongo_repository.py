@@ -1,6 +1,6 @@
 from pymongo.errors import ConnectionFailure, OperationFailure
 from database.db_mongo_connect import MongoUnitOfWork
-
+from src.api.v1.chat.constants import constant
 async def chatbot_update_data(db, collection_name: str, query: dict,update_values: dict):
     try:
         collection = db[collection_name]
@@ -46,8 +46,8 @@ def get_question_key_data(question_key):
     :rtype: Any | None
     """
     client, db = MongoUnitOfWork().mdb_connect()
-    copilot_collection  = "demo" 
-    question_data = db[copilot_collection].find_one({"message": {"$elemMatch": {"question_key": question_key }}},
+    master_collection  = constant.MASTER_COLLECTION
+    question_data = db[master_collection].find_one({"message": {"$elemMatch": {"question_key": question_key }}},
                             {"message.$": 1, "_id": 0})
     return question_data
 

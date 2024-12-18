@@ -4,9 +4,7 @@ from database.unit_of_work import SqlAlchemyUnitOfWork
 
 
 async def get_question(db:Session, question_key : int):
-    """
-    Docstring for get_question
-    
+    """    
     :param db: Description
     :type db: Session
     :param question_key: Description
@@ -30,9 +28,7 @@ async def get_question(db:Session, question_key : int):
 
 
 async def save_user_response(db: Session, question_data: dict, response: dict):
-    """
-    Docstring for save_user_response
-    
+    """    
     :param db: Description
     :type db: Session
     :param question_data: Description
