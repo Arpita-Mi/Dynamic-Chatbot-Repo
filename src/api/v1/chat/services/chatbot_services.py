@@ -4,6 +4,8 @@ from src.api.v1.chat.services.mongo_services import fetch_question_data_from_mon
 from database.db_mongo_connect import MongoUnitOfWork
 from src.api.v1.chat.constants import constant
 from datetime import datetime
+from alembic import command
+from alembic.config import Config
 import os
 import shutil
 
@@ -204,8 +206,15 @@ def create_dynamic_models(question_entries, Organization_Name):
                 f.seek(0)
                 print(f.read())
 
+        run_alembic_migration()
 
-            
+
+
+def run_alembic_migration():
+    alembic_cfg = Config("/home/mind/Dynamic-Chatbot-Repo-Git-Hub/alembic.ini")
+    print("SQLAlchemy URL:", alembic_cfg.get_main_option("sqlalchemy.url"))
+    command.revision(alembic_cfg, message="Dynamic model update", autogenerate=True)
+    command.upgrade(alembic_cfg, "head")
 
 def replace_table_and_class_name(static_model_path, dynamic_model_path, organization_name):
     # Define the new file path

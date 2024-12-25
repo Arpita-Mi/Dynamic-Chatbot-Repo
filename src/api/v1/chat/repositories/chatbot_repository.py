@@ -43,7 +43,8 @@ async def save_user_response(db: Session, question_data: dict, response: dict):
             question_key = question_data["message"]["question_key"]
         
             current_question_key = question_data.get("current_question_id") if question_key != 1 else question_key
-
+            if question_key ==2 and current_question_key == 1:
+                return (question_key)
             question_field_map = (
                 db.query(QuestionFieldsMap)
                 .filter(QuestionFieldsMap.current_question_key == current_question_key)
@@ -56,7 +57,7 @@ async def save_user_response(db: Session, question_data: dict, response: dict):
             field_name = question_field_map.fields
 
             previous_response = db.query(UserResponse).filter(UserResponse.id == question_data["id"]).first()
-
+            #Update the Resposne field
             if previous_response:
                 setattr(previous_response, field_name, question_data.get("response"))
                 db.flush()  
@@ -64,7 +65,13 @@ async def save_user_response(db: Session, question_data: dict, response: dict):
                 db.refresh(previous_response) 
                 return previous_response
             else:
-                new_response = UserResponse(**{field_name: response.get("message")})
+                if question_key == 1:
+                    # Create a new response with null message for question_key == 1
+                    new_response = UserResponse(**{field_name: None})
+                else:
+                    # Create a new response with the provided message
+                    new_response = UserResponse(**{field_name: question_data.get("message")})
+                # new_response = UserResponse(**{field_name: response.get("message")})
                 db.add(new_response) 
                 db.commit()  
                 db.refresh(new_response) 

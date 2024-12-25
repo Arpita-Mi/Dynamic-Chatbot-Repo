@@ -12,10 +12,6 @@ if os.path.exists(generated_path):
         for file in os.listdir(generated_path)
         if file.endswith(".py") and file != "__init__.py"
     )
-    for file in os.listdir(generated_path):
-        if file.endswith(".py") and file != "__init__.py":
-           print(file)
-
 else:
     print("PATH NOT FOUND")
 # Import all modules listed in __all__

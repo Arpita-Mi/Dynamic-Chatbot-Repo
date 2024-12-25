@@ -3,9 +3,8 @@ import os
 import sys
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
-
 from alembic import context
-
+from config.config import settings
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_DIR)
@@ -28,9 +27,15 @@ target_metadata = Base.metadata
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
-# ... etc.
-SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
+# ... etc. 
+
+# *******************|DATABASE CONNECTION URL|*******************************
+
+SQLALCHEMY_DATABASE_URI = f"postgresql+psycopg2://{settings.SERVICE_DB_USER}:{settings.SERVICE_DB_PASSWORD}@{settings.SERVICE_DB_HOSTNAME}:{settings.SERVICE_DB_PORT}/{settings.SERVICE_DB}"
+print(SQLALCHEMY_DATABASE_URI)
 config.set_main_option("sqlalchemy.url", str(SQLALCHEMY_DATABASE_URI))
+
+# ****************************************************************************
 def run_migrations_offline():
     """Run migrations in 'offline' mode.
 

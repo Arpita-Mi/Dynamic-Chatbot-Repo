@@ -7,7 +7,6 @@ from src.api.v1.chat.services.mongo_services import chatbot_insert_message , fet
 from src.api.v1.chat.services.chatbot_services import create_message, construct_response , get_question_field_map_resposne ,\
 update_latest_message,save_respose_db , update_latest_message_with_image , generate_image_url , get_question_data_from_room,\
 create_dynamic_models
-from src.api.v1.chat.constants.constant import MsgType
 from src.api.v1.chat.constants import constant
 from database.db_mongo_connect import MongoUnitOfWork
 from database.db_connection import get_service_db_session
@@ -31,7 +30,7 @@ async def insert_chatbot_conversation(request: Request, scr: List[Message], lang
     language_id = int(request.headers.get('language-id', '1'))
     try:  
         client, db = MongoUnitOfWork().mdb_connect()
-        collection_name = "online_shopping_chatbot"    
+        collection_name = constant.MASTER_COLLECTION   
         current_time = datetime.now()
         response_time = current_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         response_data = []
@@ -101,7 +100,7 @@ async def dynamic_chatbot_conversation(request: Request, scr: Form = Depends(Pay
             if response:
                 ques["id"] = scr.id
                 ques["response"] = scr.message
-                ques["current_question_id"] = scr.current_question_id
+                ques["current_question_id"] = scr.question_key
                 user_details = await save_respose_db(service_db_session=service_db_session ,question_data=ques,response=response)
 
         elif scr.msg_type in [1, 2 ,3, 4]:     #[1:text , 2:boolean , 3:multiple selection]
@@ -110,12 +109,12 @@ async def dynamic_chatbot_conversation(request: Request, scr: Form = Depends(Pay
                 update_latest_message(db, latest_message, scr.message, user_collection)
             
             #INSERT QUESTION TO MONGO
-
             ques = create_message(scr, scr.question_key) #fetch the question details from master db(mongo) and create a dict 
             db[user_collection].insert_one(ques)
             if "_id" in ques:
                 ques["_id"] = str(ques["_id"])
 
+            
             #SAVE RESPOSNE TO DATABASE
             response = await get_question_field_map_resposne(service_db_session=service_db_session ,question_key = scr.question_key)
             if response:
@@ -200,7 +199,7 @@ async def save_chatbot_conversation_db(request: Request, scr: List[Message],Orga
                 
             await save_question_payload_query(service_db_session,question_entry)
 
-            create_dynamic_models(question_entries,Organization_Name)
+        create_dynamic_models(question_entries,Organization_Name)
   
         return {"status": "success", "message": "Data saved and new file created."}
     except Exception as e:
