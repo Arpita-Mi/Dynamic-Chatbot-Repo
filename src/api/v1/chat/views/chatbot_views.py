@@ -2,12 +2,18 @@ from fastapi import APIRouter, status, Request, Header, Depends, Query, HTTPExce
 from typing import List
 from config.config import settings
 from src.api.v1.chat.schemas.schema import Payload , Message,RetrivePaylaod
+from src.api.v1.chat.repositories.chatbot_repository import save_question_payload_query, fetch_question_payload_query
 from src.api.v1.chat.services.mongo_services import chatbot_insert_message , fetch_question_data_from_mongo 
 from src.api.v1.chat.services.chatbot_services import create_message, construct_response , get_question_field_map_resposne ,\
-update_latest_message,save_respose_db , update_latest_message_with_image , generate_image_url , get_question_data_from_room
+update_latest_message,save_respose_db , update_latest_message_with_image , generate_image_url , get_question_data_from_room,\
+create_dynamic_models
+from src.api.v1.chat.constants.constant import MsgType
 from src.api.v1.chat.constants import constant
 from database.db_mongo_connect import MongoUnitOfWork
 from database.db_connection import get_service_db_session
+from src.api.v1.chat.models.models import QuestionFieldsMap
+import os
+import shutil
 from datetime import datetime
 from pymongo import DESCENDING
 
@@ -45,7 +51,6 @@ async def insert_chatbot_conversation(request: Request, scr: List[Message], lang
             response_data.append(
                 message_dict
             # "timestamp": datetime.now()
-            
             )
         
         message_resposne = await chatbot_insert_message(db, collection_name, response_data)
@@ -162,5 +167,73 @@ async def retrive_convsersation(request: Request, room_id :int ,language_id: str
     return room_list
 
 
+
+
+@router.post("/chatbot/save_chatbot_conversation_db", summary="save_chatbot_conversation_db",
+             status_code=status.HTTP_200_OK)
+async def save_chatbot_conversation_db(request: Request, scr: List[Message],Organization_Name:str, language_id: str = Header(None)):
+    """
+    API to Insert Question paylaod
+    """
+    language_id = int(request.headers.get('language-id', '1'))
+    try:  
+        service_db_credentials = {  
+            "username": settings.SERVICE_DB_USER,
+            "password": settings.SERVICE_DB_PASSWORD,
+            "hostname": settings.SERVICE_DB_HOSTNAME,
+            "port": settings.SERVICE_DB_PORT,
+            "db_name": settings.SERVICE_DB
+        }
+        service_db_session = await get_service_db_session(service_db_credentials)
+        question_entries = []
+        current_question_key = 1
+
+        for message in scr:
+            field_value = f"question_answer_{message.question_key}"
+            question_entry = {
+                "current_question_key": current_question_key,
+                "fields": field_value,
+                "msg_type": message.msg_type
+            }
+            question_entries.append(question_entry)
+            current_question_key += 1
+                
+            await save_question_payload_query(service_db_session,question_entry)
+
+            create_dynamic_models(question_entries,Organization_Name)
+  
+        return {"status": "success", "message": "Data saved and new file created."}
+    except Exception as e:
+        return (str(e))
+
+#FETCH THE DETAILS FROM DB 
+@router.get("/chatbot/get_question_paylaod_detail", summary="save_chatbot_conversation_db",
+             status_code=status.HTTP_200_OK)
+async def get_question_paylaod_detail(request: Request,language_id: str = Header(None)):
+    """
+    API to Insert Question paylaod
+    """
+    language_id = int(request.headers.get('language-id', '1'))
+    try:  
+        service_db_credentials = {  
+            "username": settings.SERVICE_DB_USER,
+            "password": settings.SERVICE_DB_PASSWORD,
+            "hostname": settings.SERVICE_DB_HOSTNAME,
+            "port": settings.SERVICE_DB_PORT,
+            "db_name": settings.SERVICE_DB
+        }
+        service_db_session = await get_service_db_session(service_db_credentials)
+        response_data = []
+       
+        question_respsone =  fetch_question_payload_query(service_db_session)
+        response_data = [
+            { "current_question_key": item.current_question_key,"fields": item.fields , "msg_type" : item.msg_type}
+            for item in question_respsone
+        ]
+        print(response_data)
+    except Exception as e:
+        return (str(e))
+    else:
+        return response_data
 
 

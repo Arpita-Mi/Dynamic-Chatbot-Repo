@@ -8,7 +8,7 @@ class Message(BaseModel):
     question_key: int
     msg_text: str
     msg_type: int
-    response : str = None
+    response : Optional[str] = None
     response_time :datetime = None
     next_question: Optional[Dict[str, int]] = None  
     options: Optional[List[Dict[str,str]]] = None
