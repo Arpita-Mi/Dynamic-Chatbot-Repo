@@ -23,36 +23,65 @@ router = APIRouter(prefix="/statistic")
 @router.post("/chatbot/insert_chatbot_conversation", summary="save chatbot conversation",
              status_code=status.HTTP_200_OK)
 
-async def insert_chatbot_conversation(request: Request, scr: List[Message], language_id: str = Header(None)):
+async def insert_chatbot_conversation(request: Request, scr: List[Message], Organization_Name = str,language_id: str = Header(None)):
     """
     API to Insert Question paylaod
     """
+    # Organization_Name = "AI"
     language_id = int(request.headers.get('language-id', '1'))
-    try:  
+
+    try:
+        # Prepare database credentials
+        service_db_credentials = {
+            "username": settings.SERVICE_DB_USER,
+            "password": settings.SERVICE_DB_PASSWORD,
+            "hostname": settings.SERVICE_DB_HOSTNAME,
+            "port": settings.SERVICE_DB_PORT,
+            "db_name": settings.SERVICE_DB
+        }
+        service_db_session = await get_service_db_session(service_db_credentials)
+
+        # MongoDB connection
         client, db = MongoUnitOfWork().mdb_connect()
-        collection_name = constant.MASTER_COLLECTION   
+        collection_name = constant.MASTER_COLLECTION
+        response_data = []
+
+        # Current timestamp
         current_time = datetime.now()
         response_time = current_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-        response_data = []
-        for message in scr:
-            message_dict = {
-                "question_key" : message.question_key,
-                'msg_text': message.msg_text,
-                'msg_type': message.msg_type,
-                "response" : message.response,
-                "response_time" : message.response_time,
-                'options' : message.options,
-                'next_question': message.next_question
-            }
-            message_dict["language-id"] = language_id
-            message_dict["question_key"] = message.question_key
 
-            response_data.append(
-                message_dict
-            # "timestamp": datetime.now()
-            )
-        
-        message_resposne = await chatbot_insert_message(db, collection_name, response_data)
+        # Prepare response data and insert into MongoDB
+        for message in scr:
+            response_data.append({
+                "question_key": message.question_key,
+                "msg_text": message.msg_text,
+                "msg_type": message.msg_type,
+                "response": message.response,
+                "response_time": message.response_time,
+                "options": message.options,
+                "next_question": message.next_question,
+                "language-id": language_id
+            })
+
+        # insert questions payload to MongoDB
+        await chatbot_insert_message(db, collection_name, response_data)
+
+        # Prepare question entries for the SQL database
+        question_entries = [
+            {
+                "current_question_key": idx + 1,
+                "fields": f"question_answer_{message.question_key}",
+                "msg_type": message.msg_type
+            }
+            for idx, message in enumerate(scr)
+        ]
+
+        # insert question entries to the SQL database (Question Field Map)
+        await save_question_payload_query(service_db_session, question_entries)
+
+        # Create dynamic models
+        create_dynamic_models(question_entries, Organization_Name)
+    
 
     except Exception as e:
         return (str(e))
@@ -63,9 +92,9 @@ async def insert_chatbot_conversation(request: Request, scr: List[Message], lang
 
 
 
-@router.post("/chatbot/dynamic_chatbot_conversation", summary="Dynamic chatbot conversation",
+@router.post("/chatbot/start_chatbot_conversation", summary="start_chatbot_conversation",
              status_code=status.HTTP_200_OK)
-async def dynamic_chatbot_conversation(request: Request, scr: Form = Depends(Payload), language_id: str = Header(1),
+async def start_chatbot_conversation(request: Request, scr: Form = Depends(Payload), language_id: str = Header(1),
                                    image :List[UploadFile]=File(None) 
                                 ):
     """
@@ -103,7 +132,7 @@ async def dynamic_chatbot_conversation(request: Request, scr: Form = Depends(Pay
                 ques["current_question_id"] = scr.question_key
                 user_details = await save_respose_db(service_db_session=service_db_session ,question_data=ques,response=response)
 
-        elif scr.msg_type in [1, 2 ,3, 4]:     #[1:text , 2:boolean , 3:multiple selection]
+        elif scr.msg_type in [1, 2 ,3, 4]:     #[1:text , 2:boolean , 3:multiple selection , 4:Single Select]
             #UPDATE THE RESPOSNE TO MONGO
             if latest_message:
                 update_latest_message(db, latest_message, scr.message, user_collection)
@@ -166,44 +195,6 @@ async def retrive_convsersation(request: Request, room_id :int ,language_id: str
     return room_list
 
 
-
-
-@router.post("/chatbot/save_chatbot_conversation_db", summary="save_chatbot_conversation_db",
-             status_code=status.HTTP_200_OK)
-async def save_chatbot_conversation_db(request: Request, scr: List[Message],Organization_Name:str, language_id: str = Header(None)):
-    """
-    API to Insert Question paylaod
-    """
-    language_id = int(request.headers.get('language-id', '1'))
-    try:  
-        service_db_credentials = {  
-            "username": settings.SERVICE_DB_USER,
-            "password": settings.SERVICE_DB_PASSWORD,
-            "hostname": settings.SERVICE_DB_HOSTNAME,
-            "port": settings.SERVICE_DB_PORT,
-            "db_name": settings.SERVICE_DB
-        }
-        service_db_session = await get_service_db_session(service_db_credentials)
-        question_entries = []
-        current_question_key = 1
-
-        for message in scr:
-            field_value = f"question_answer_{message.question_key}"
-            question_entry = {
-                "current_question_key": current_question_key,
-                "fields": field_value,
-                "msg_type": message.msg_type
-            }
-            question_entries.append(question_entry)
-            current_question_key += 1
-                
-            await save_question_payload_query(service_db_session,question_entry)
-
-        create_dynamic_models(question_entries,Organization_Name)
-  
-        return {"status": "success", "message": "Data saved and new file created."}
-    except Exception as e:
-        return (str(e))
 
 #FETCH THE DETAILS FROM DB 
 @router.get("/chatbot/get_question_paylaod_detail", summary="save_chatbot_conversation_db",

@@ -198,7 +198,7 @@ def create_dynamic_models(question_entries, Organization_Name):
             for qes in question_entries:
                 dynamic_field = qes["fields"]
                 msg_type_column = qes["msg_type"]
-                if msg_type_column == 3:
+                if msg_type_column in [3,4]:
                     msg_column = constant.value_to_type[msg_type_column].name.upper()
                 else:
                     msg_column = constant.value_to_type[msg_type_column].name.capitalize()

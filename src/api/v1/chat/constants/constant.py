@@ -11,7 +11,7 @@ class MsgType(Enum):
     JSON = "JSON"
 
 value_to_type = {
-    1: MsgType.STRING,
+    1:MsgType.STRING,
     2:MsgType.BOOLEAN,
     3:MsgType.JSON,
     4:MsgType.JSON,
