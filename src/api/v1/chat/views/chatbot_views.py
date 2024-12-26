@@ -92,12 +92,12 @@ async def dynamic_chatbot_conversation(request: Request, scr: Form = Depends(Pay
             if "_id" in ques:
                 ques["_id"] = str(ques["_id"])
 
-            response = await get_question_field_map_resposne(service_db_session=service_db_session ,question_key = scr.question_key)
-            if response:
-                ques["id"] = scr.id
-                ques["response"] = scr.message
-                ques["current_question_id"] = scr.current_question_id
-                user_details = await save_respose_db(service_db_session=service_db_session ,question_data=ques,response=response)
+            # response = await get_question_field_map_resposne(service_db_session=service_db_session ,question_key = scr.question_key)
+            # if response:
+            ques["id"] = scr.id
+            ques["response"] = scr.message
+            ques["current_question_id"] = scr.question_key
+            user_details = await save_respose_db(service_db_session=service_db_session ,question_data=ques,response=None)
 
         elif scr.msg_type in [1, 2 ,3, 4]:     #[1:text , 2:boolean , 3:multiple selection]
             #UPDATE THE RESPOSNE TO MONGO
