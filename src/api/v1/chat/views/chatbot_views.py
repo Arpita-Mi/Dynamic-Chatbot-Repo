@@ -1,18 +1,17 @@
 from fastapi import APIRouter, status, Request, Header, Depends, Query, HTTPException, UploadFile , File,Form 
 from typing import List
 from config.config import settings
-from src.api.v1.chat.schemas.schema import Payload , Message,RetrivePaylaod
+from src.api.v1.chat.schemas.schema import Payload , Message
 from src.api.v1.chat.repositories.chatbot_repository import save_question_payload_query, fetch_question_payload_query
 from src.api.v1.chat.services.mongo_services import chatbot_insert_message , fetch_question_data_from_mongo 
 from src.api.v1.chat.services.chatbot_services import create_message, construct_response , get_question_field_map_resposne ,\
 update_latest_message,save_respose_db , update_latest_message_with_image , generate_image_url , get_question_data_from_room,\
 create_dynamic_models
 from src.api.v1.chat.constants import constant
-from database.db_mongo_connect import MongoUnitOfWork
-from database.db_connection import get_service_db_session
+from database.db_mongo_connect import create_mongo_connection
+from database.db_connection import create_service_db_session
 from datetime import datetime
 from pymongo import DESCENDING
-# from utils.util import logger
 from logger.logger import logger , log_format
 router = APIRouter(prefix="/statistic")
 
@@ -31,20 +30,12 @@ async def insert_chatbot_conversation(request: Request, scr: List[Message], Chat
 
     try:
         # Prepare database credentials
-        service_db_credentials = {
-            "username": settings.SERVICE_DB_USER,
-            "password": settings.SERVICE_DB_PASSWORD,
-            "hostname": settings.SERVICE_DB_HOSTNAME,
-            "port": settings.SERVICE_DB_PORT,
-            "db_name": settings.SERVICE_DB
-        }
-        service_db_session = await get_service_db_session(service_db_credentials)
+        service_db_session = await create_service_db_session()
 
         # MongoDB connection
-        client, db = MongoUnitOfWork().mdb_connect()
-        collection_name = constant.MASTER_COLLECTION
+        db , collection_name , _ = create_mongo_connection()
+        
         response_data = []
-
         # Current timestamp
         current_time = datetime.now()
         response_time = current_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
@@ -102,18 +93,10 @@ async def start_chatbot_conversation(request: Request, scr: Form = Depends(Paylo
     try:
         language_id = int(request.headers.get('language-id', '1'))
         # Database credentials and sessions
-        service_db_credentials = {  
-            "username": settings.SERVICE_DB_USER,
-            "password": settings.SERVICE_DB_PASSWORD,
-            "hostname": settings.SERVICE_DB_HOSTNAME,
-            "port": settings.SERVICE_DB_PORT,
-            "db_name": settings.SERVICE_DB
-        }
-        service_db_session = await get_service_db_session(service_db_credentials)
-
-        client, db = MongoUnitOfWork().mdb_connect()
-        user_collection = constant.USER_COLLECTION
-
+        service_db_session = await create_service_db_session()
+        
+        # MongoDB connection
+        db ,_ , user_collection = create_mongo_connection()
         latest_message = db[user_collection].find_one(
             {"room_id": scr.room_id}, sort=[("created_at", DESCENDING)]
         )
@@ -204,14 +187,8 @@ async def get_question_paylaod_detail(request: Request,language_id: str = Header
     """
     language_id = int(request.headers.get('language-id', '1'))
     try:  
-        service_db_credentials = {  
-            "username": settings.SERVICE_DB_USER,
-            "password": settings.SERVICE_DB_PASSWORD,
-            "hostname": settings.SERVICE_DB_HOSTNAME,
-            "port": settings.SERVICE_DB_PORT,
-            "db_name": settings.SERVICE_DB
-        }
-        service_db_session = await get_service_db_session(service_db_credentials)
+        
+        service_db_session = await create_service_db_session()
         response_data = []
        
         question_respsone =  fetch_question_payload_query(service_db_session)

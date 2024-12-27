@@ -2,7 +2,9 @@ from sqlalchemy.orm import Session
 from src.api.v1.chat.models.models import QuestionFieldsMap , UserResponse
 from database.unit_of_work import SqlAlchemyUnitOfWork
 from logger.logger import logger , log_format
-
+from alembic import command
+from alembic.config import Config
+from src.api.v1.chat.constants import constant
 
 async def get_question(db:Session, question_key : int):
     """    
@@ -117,3 +119,13 @@ def fetch_question_payload_query(db:Session):
     else:
         return question_resposne
         
+
+    
+def run_alembic_migration():
+    try:
+        alembic_cfg = Config(constant.ALEMBIC_INI_PATH)
+        command.revision(alembic_cfg, message="Dynamic model update", autogenerate=True)
+        command.upgrade(alembic_cfg, "head")
+        logger.info(log_format(msg="run_alembic_migrations"))
+    except Exception as e:
+        logger.error(log_format(msg=f"Error during Alembic migration : {e}"))
