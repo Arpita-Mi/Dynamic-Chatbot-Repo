@@ -10,12 +10,10 @@ create_dynamic_models
 from src.api.v1.chat.constants import constant
 from database.db_mongo_connect import MongoUnitOfWork
 from database.db_connection import get_service_db_session
-from src.api.v1.chat.models.models import QuestionFieldsMap
-import os
-import shutil
 from datetime import datetime
 from pymongo import DESCENDING
-
+# from utils.util import logger
+from logger.logger import logger , log_format
 router = APIRouter(prefix="/statistic")
 
 
@@ -23,10 +21,11 @@ router = APIRouter(prefix="/statistic")
 @router.post("/chatbot/insert_chatbot_conversation", summary="save chatbot conversation",
              status_code=status.HTTP_200_OK)
 
-async def insert_chatbot_conversation(request: Request, scr: List[Message], Organization_Name = str,language_id: str = Header(None)):
+async def insert_chatbot_conversation(request: Request, scr: List[Message], ChatbotName = str,language_id: str = Header(None)):
     """
     API to Insert Question paylaod
     """
+    logger.info(log_format(msg="inital api call"))
     # Organization_Name = "AI"
     language_id = int(request.headers.get('language-id', '1'))
 
@@ -62,7 +61,7 @@ async def insert_chatbot_conversation(request: Request, scr: List[Message], Orga
                 "next_question": message.next_question,
                 "language-id": language_id
             })
-
+        
         # insert questions payload to MongoDB
         await chatbot_insert_message(db, collection_name, response_data)
 
@@ -80,7 +79,7 @@ async def insert_chatbot_conversation(request: Request, scr: List[Message], Orga
         await save_question_payload_query(service_db_session, question_entries)
 
         # Create dynamic models
-        create_dynamic_models(question_entries, Organization_Name)
+        create_dynamic_models(question_entries, ChatbotName)
     
 
     except Exception as e:

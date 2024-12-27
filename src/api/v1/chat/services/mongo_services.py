@@ -1,5 +1,7 @@
 from src.api.v1.chat.repositories.mongo_repository import insert_data, chatbot_update_data , get_question_key_data , update_data
 from bson import ObjectId
+from logger.logger import logger , log_format
+
 async def chatbot_insert_message(db, collection_name,  message: str):
     """
     Insert Message
@@ -12,6 +14,9 @@ async def chatbot_insert_message(db, collection_name,  message: str):
         "message": message,
     }
     res = await insert_data(db, collection_name, data)
+    logger.info(log_format(msg="insert question payload to mongo",
+                           response  = res))
+
     return res.inserted_id
 
 

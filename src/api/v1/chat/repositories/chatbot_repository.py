@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from src.api.v1.chat.models.models import QuestionFieldsMap , UserResponse
 from database.unit_of_work import SqlAlchemyUnitOfWork
+from logger.logger import logger , log_format
 
 
 async def get_question(db:Session, question_key : int):
