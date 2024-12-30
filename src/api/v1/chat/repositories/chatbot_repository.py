@@ -89,7 +89,7 @@ async def save_user_response(db: Session, question_data: dict, response: dict):
 
 
 
-async def save_question_payload_query(db: Session, question_entries):
+async def save_question_payload_query(db: Session, question_entries,DynamicTable):
     """
     Saves question data into the QuestionFieldsMap table with a prefix for the fields column.
     The current_question_key is incremented for each entry.
@@ -97,13 +97,18 @@ async def save_question_payload_query(db: Session, question_entries):
     try:
         with SqlAlchemyUnitOfWork(db) as db:
             for question_entry in question_entries:
-                question_fields_map = QuestionFieldsMap(
-                    current_question_key=question_entry["current_question_key"],
-                    fields=question_entry["fields"],
-                    msg_type=question_entry["msg_type"]
-                )
+                # question_fields_map = QuestionFieldsMap(
+                #     current_question_key=question_entry["current_question_key"],
+                #     fields=question_entry["fields"],
+                #     msg_type=question_entry["msg_type"]
+                # )
+                record = DynamicTable(
+                        current_question_key=question_entry["current_question_key"],
+                        fields=question_entry["fields"],
+                        msg_type=question_entry["msg_type"],
+                    )
                         
-                db.add(question_fields_map)
+                db.add(record)
                 db.flush()  
                 db.commit() 
     except Exception as e:

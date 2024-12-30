@@ -6,8 +6,8 @@ IMAGE_BASE_URL =  "https://example.com/images"
 STATIC_MODEL_PATH = "/home/mind/Dynamic-Chatbot-Repo-Git-Hub/src/api/v1/chat/models/static_model.py"
 DYNAMIC_MODEL_PATH = "/home/mind/Dynamic-Chatbot-Repo-Git-Hub/src/api/v1/chat/models/dynamic_models"
 ALEMBIC_INI_PATH =  "/home/mind/Dynamic-Chatbot-Repo-Git-Hub/alembic.ini"
-QUESTION_FIELD_MAP_MODEL_PATH =  "/home/mind/Dynamic-Chatbot-Repo-Git-Hub/src/api/v1/chat/models/model.py"
-
+QUESTION_FIELD_MAP_MODEL_PATH =  "/home/mind/Dynamic-Chatbot-Repo-Git-Hub/src/api/v1/chat/models/question_filed_map_static.py"
+DYNAMIC_QUESTION_FIELD_MAP_MODEL_PATH =  "/home/mind/Dynamic-Chatbot-Repo-Git-Hub/src/api/v1/chat/models/dynamic_question_map_filed"
 
 
 class MsgType(Enum):

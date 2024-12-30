@@ -1,18 +1,20 @@
 from fastapi import APIRouter, status, Request, Header, Depends, Query, HTTPException, UploadFile , File,Form 
 from typing import List
+from sqlalchemy import String , Integer
 from config.config import settings
 from src.api.v1.chat.schemas.schema import Payload , Message
 from src.api.v1.chat.repositories.chatbot_repository import save_question_payload_query, fetch_question_payload_query
 from src.api.v1.chat.services.mongo_services import chatbot_insert_message , fetch_question_data_from_mongo 
 from src.api.v1.chat.services.chatbot_services import create_message, construct_response , get_question_field_map_resposne ,\
 update_latest_message,save_respose_db , update_latest_message_with_image , generate_image_url , get_question_data_from_room,\
-create_dynamic_models
+create_dynamic_models 
 from src.api.v1.chat.constants import constant
 from database.db_mongo_connect import create_mongo_connection
 from database.db_connection import create_service_db_session
 from datetime import datetime
 from pymongo import DESCENDING
 from logger.logger import logger , log_format
+from src.api.v1.chat.models.question_filed_map_static import dynamic_question_filed_map
 router = APIRouter(prefix="/statistic")
 
 
@@ -30,7 +32,7 @@ async def insert_chatbot_conversation(request: Request, scr: List[Message], Chat
 
     try:
         # Prepare database credentials
-        service_db_session = await create_service_db_session()
+        service_db_session, _= await create_service_db_session()
 
         # MongoDB connection
         db , collection_name , _ = create_mongo_connection()
@@ -67,9 +69,11 @@ async def insert_chatbot_conversation(request: Request, scr: List[Message], Chat
         ]
 
         # insert question entries to the SQL database (Question Field Map)
-        await save_question_payload_query(service_db_session, question_entries)
-
+        # await save_question_payload_query(service_db_session, question_entries)
+        # create_dynamic_question_field_map(question_entries, ChatbotName)
         # Create dynamic models
+        await create_question_field_map_dynamic_models(question_entries, ChatbotName, service_db_session)
+
         create_dynamic_models(question_entries, ChatbotName)
     
 
@@ -78,6 +82,36 @@ async def insert_chatbot_conversation(request: Request, scr: List[Message], Chat
     else:
         return (response_data)
 
+
+from sqlalchemy.orm import Session
+from database.database_manager import Base
+
+
+async def create_question_field_map_dynamic_models(question_entries, chatbot_name, db: Session):
+    """
+    Dynamically creates the QuestionFieldsMap table if it doesn't exist and inserts data.
+    """
+    # Define table name and fields dynamically
+
+    service_db_session , engine= await create_service_db_session()
+
+    table_name = f"{chatbot_name}_question_field_map"
+    fields = {
+        "current_question_key": Integer,
+        "fields": String,
+        "msg_type": String,
+    }
+
+    # Create dynamic model
+    DynamicTable = dynamic_question_filed_map(table_name, fields)
+
+
+    # # Ensure the table is created in the database
+    # engine = service_db_session.bind  # Extract the engine from the existing session
+    Base.metadata.create_all(engine)
+
+    await save_question_payload_query(service_db_session, question_entries,DynamicTable)
+  
 
 
 
@@ -93,7 +127,7 @@ async def start_chatbot_conversation(request: Request, scr: Form = Depends(Paylo
     try:
         language_id = int(request.headers.get('language-id', '1'))
         # Database credentials and sessions
-        service_db_session = await create_service_db_session()
+        service_db_session, _ = await create_service_db_session()
         
         # MongoDB connection
         db ,_ , user_collection = create_mongo_connection()
@@ -188,7 +222,7 @@ async def get_question_paylaod_detail(request: Request,language_id: str = Header
     language_id = int(request.headers.get('language-id', '1'))
     try:  
         
-        service_db_session = await create_service_db_session()
+        service_db_session,_ = await create_service_db_session()
         response_data = []
        
         question_respsone =  fetch_question_payload_query(service_db_session)
