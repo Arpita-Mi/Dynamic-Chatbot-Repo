@@ -7,16 +7,13 @@ from src.api.v1.chat.repositories.chatbot_repository import save_question_payloa
 from src.api.v1.chat.services.mongo_services import chatbot_insert_message , fetch_question_data_from_mongo 
 from src.api.v1.chat.services.chatbot_services import create_message, construct_response , get_question_field_map_resposne ,\
 update_latest_message,save_respose_db , update_latest_message_with_image , generate_image_url , get_question_data_from_room,\
-create_dynamic_models 
+create_dynamic_models , create_question_field_map_dynamic_models , clear_pycache
 from src.api.v1.chat.constants import constant
 from database.db_mongo_connect import create_mongo_connection
 from database.db_connection import create_service_db_session
 from datetime import datetime
 from pymongo import DESCENDING
 from logger.logger import logger , log_format
-from src.api.v1.chat.models.question_filed_map_static import dynamic_question_filed_map
-from sqlalchemy.orm import Session
-from database.database_manager import Base
 import os
 import shutil
 router = APIRouter(prefix="/statistic")
@@ -87,36 +84,10 @@ async def insert_chatbot_conversation(request: Request, scr: List[Message], Chat
         return (response_data)
 
 
-def clear_pycache():
-    for root, dirs, files in os.walk("."):
-        if "__pycache__" in dirs:
-            shutil.rmtree(os.path.join(root, "__pycache__"))
 
 
-async def create_question_field_map_dynamic_models(question_entries, chatbot_name, db: Session):
-    """
-    Dynamically creates the QuestionFieldsMap table if it doesn't exist and inserts data.
-    """
-    # Define table name and fields dynamically
-
-    service_db_session , engine= await create_service_db_session()
-
-    table_name = f"{chatbot_name}_question_field_map"
-    fields = {
-        "current_question_key": Integer,
-        "fields": String,
-        "msg_type": String,
-    }
-
-    # Create dynamic model
-    DynamicTable = dynamic_question_filed_map(table_name, fields)
 
 
-    # # Ensure the table is created in the database
-    Base.metadata.create_all(engine)
-    # Base.metadata.clear()
-    await save_question_payload_query(service_db_session, question_entries,DynamicTable)
-  
 
 
 

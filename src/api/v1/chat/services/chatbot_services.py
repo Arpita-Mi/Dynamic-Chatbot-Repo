@@ -4,8 +4,12 @@ from src.api.v1.chat.services.mongo_services import fetch_question_data_from_mon
 from database.db_mongo_connect import MongoUnitOfWork
 from src.api.v1.chat.constants import constant
 from datetime import datetime
-# from alembic import command
-# from alembic.config import Config
+from database.db_connection import create_service_db_session
+from sqlalchemy import Integer , String
+from database.database_manager import Base
+from src.api.v1.chat.models.question_filed_map_static import dynamic_question_filed_map
+from src.api.v1.chat.repositories.chatbot_repository import save_question_payload_query
+from sqlalchemy.orm import Session
 from src.api.v1.chat.file_handling.dynamic_model_creation import register_dynamic_model , replace_table_and_class_name
 import sys
 import importlib.util
@@ -233,8 +237,32 @@ async def create_dynamic_models(question_entries, ChatbotName):
 
 
 
+async def create_question_field_map_dynamic_models(question_entries, chatbot_name, db: Session):
+    """
+    Dynamically creates the QuestionFieldsMap table if it doesn't exist and inserts data.
+    """
+    # Define table name and fields dynamically
+
+    service_db_session , engine= await create_service_db_session()
+
+    table_name = f"{chatbot_name}_question_field_map"
+    fields = {
+        "current_question_key": Integer,
+        "fields": String,
+        "msg_type": String,
+    }
+
+    # Create dynamic model
+    DynamicTable = dynamic_question_filed_map(table_name, fields)
 
 
+    # # Ensure the table is created in the database
+    Base.metadata.create_all(engine)
+    await save_question_payload_query(service_db_session, question_entries,DynamicTable)
+  
 
-        
 
+def clear_pycache():
+    for root, dirs, files in os.walk("."):
+        if "__pycache__" in dirs:
+            shutil.rmtree(os.path.join(root, "__pycache__"))
