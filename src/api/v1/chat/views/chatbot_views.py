@@ -15,6 +15,10 @@ from datetime import datetime
 from pymongo import DESCENDING
 from logger.logger import logger , log_format
 from src.api.v1.chat.models.question_filed_map_static import dynamic_question_filed_map
+from sqlalchemy.orm import Session
+from database.database_manager import Base
+import os
+import shutil
 router = APIRouter(prefix="/statistic")
 
 
@@ -32,6 +36,7 @@ async def insert_chatbot_conversation(request: Request, scr: List[Message], Chat
 
     try:
         # Prepare database credentials
+        clear_pycache()
         service_db_session, _= await create_service_db_session()
 
         # MongoDB connection
@@ -74,8 +79,7 @@ async def insert_chatbot_conversation(request: Request, scr: List[Message], Chat
         # Create dynamic models
         await create_question_field_map_dynamic_models(question_entries, ChatbotName, service_db_session)
 
-        create_dynamic_models(question_entries, ChatbotName)
-    
+        await create_dynamic_models(question_entries, ChatbotName)
 
     except Exception as e:
         return (str(e))
@@ -83,8 +87,10 @@ async def insert_chatbot_conversation(request: Request, scr: List[Message], Chat
         return (response_data)
 
 
-from sqlalchemy.orm import Session
-from database.database_manager import Base
+def clear_pycache():
+    for root, dirs, files in os.walk("."):
+        if "__pycache__" in dirs:
+            shutil.rmtree(os.path.join(root, "__pycache__"))
 
 
 async def create_question_field_map_dynamic_models(question_entries, chatbot_name, db: Session):
@@ -107,9 +113,8 @@ async def create_question_field_map_dynamic_models(question_entries, chatbot_nam
 
 
     # # Ensure the table is created in the database
-    # engine = service_db_session.bind  # Extract the engine from the existing session
     Base.metadata.create_all(engine)
-
+    # Base.metadata.clear()
     await save_question_payload_query(service_db_session, question_entries,DynamicTable)
   
 

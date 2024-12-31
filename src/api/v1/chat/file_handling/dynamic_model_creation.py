@@ -40,11 +40,11 @@ def replace_table_and_class_name(static_model_path, dynamic_model_path, organiza
 
 
 
+from database.base_model import Base
 def register_dynamic_model(dynamic_model_class,new_file_path):
     """
     Dynamically add the new model to the Base metadata.
     """
-    from database.base_model import Base
      
     module_name = os.path.splitext(os.path.basename(new_file_path))[0]
     sys.path.insert(0, os.path.dirname(new_file_path))

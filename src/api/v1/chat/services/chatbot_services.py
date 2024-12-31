@@ -187,7 +187,7 @@ def get_question_data_from_room(room_id):
     return room_list
 
 
-def create_dynamic_models(question_entries, ChatbotName):
+async def create_dynamic_models(question_entries, ChatbotName):
     """
     create_dynamic_models
     

@@ -164,3 +164,4 @@ app/__pycache__/schemas.cpython-38.
 /src/api/v1/chat/models/dynamic_models/*_model.py
 alembic
 /alembic
+__pycache__
