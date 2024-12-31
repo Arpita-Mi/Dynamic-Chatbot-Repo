@@ -74,19 +74,16 @@ async def insert_chatbot_conversation(request: Request, scr: List[Message], Chat
         # await save_question_payload_query(service_db_session, question_entries)
         # create_dynamic_question_field_map(question_entries, ChatbotName)
         # Create dynamic models
-        await create_question_field_map_dynamic_models(question_entries, ChatbotName, service_db_session)
 
+        #create question field map
+        await create_question_field_map_dynamic_models(question_entries, ChatbotName, service_db_session)
+        #create {chatbot}_detials tbale
         await create_dynamic_models(question_entries, ChatbotName)
 
     except Exception as e:
         return (str(e))
     else:
         return (response_data)
-
-
-
-
-
 
 
 

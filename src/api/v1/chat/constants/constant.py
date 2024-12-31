@@ -1,5 +1,5 @@
 from enum import Enum
-
+from sqlalchemy import String , Integer , Boolean , JSON , Float
 MASTER_COLLECTION = "demo"
 USER_COLLECTION = "user_data"
 IMAGE_BASE_URL =  "https://example.com/images"
@@ -11,19 +11,17 @@ DYNAMIC_QUESTION_FIELD_MAP_MODEL_PATH =  "/home/mind/Dynamic-Chatbot-Repo-Git-Hu
 
 
 class MsgType(Enum):
-    STRING = "STRING"
-    BOOLEAN = "BOOLEAN"
-    JSON = "JSON"
+    String = 1
+    Boolean = 2
+    JSON = 3
 
 value_to_type = {
-    1:MsgType.STRING,
-    2:MsgType.BOOLEAN,
+    1:MsgType.String,
+    2:MsgType.Boolean,
     3:MsgType.JSON,
     4:MsgType.JSON,
-    5:MsgType.STRING
+    5:MsgType.String
 }
-  
-
 
 
 #Implemented MSG TYPES                  # TOTAL TYPES
