@@ -15,7 +15,7 @@ import shutil
 from logger.logger import logger , log_format
 
 
-async def get_question_field_map_resposne(table_name : str ,question_key :int , service_db_session = None):
+async def get_question_field_map_resposne(question_key :int , service_db_session = None):
     """
     get_question_field_map_resposne
     
@@ -26,7 +26,7 @@ async def get_question_field_map_resposne(table_name : str ,question_key :int , 
     :return: Description
     :rtype: dict[str, Any]
     """
-    initial_question = await get_question(table_name, service_db_session ,question_key)
+    initial_question = await get_question(service_db_session ,question_key)
     message = {
         "question_key" : initial_question.current_question_key,
         "fields": initial_question.fields,
