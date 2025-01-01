@@ -86,7 +86,7 @@ async def insert_chatbot_conversation(request: Request, scr: List[Message], Chat
 
 @router.post("/chatbot/start_chatbot_conversation", summary="start_chatbot_conversation",
              status_code=status.HTTP_200_OK)
-async def start_chatbot_conversation(request: Request, scr: Form = Depends(Payload), ChatbotName = str ,language_id: str = Header(1),
+async def start_chatbot_conversation(request: Request, scr: Form = Depends(Payload),language_id: str = Header(1),
                                    image :List[UploadFile]=File(None) 
                                 ):
     """
