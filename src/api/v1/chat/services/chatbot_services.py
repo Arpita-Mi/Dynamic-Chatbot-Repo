@@ -15,7 +15,7 @@ import shutil
 from logger.logger import logger , log_format
 
 
-async def get_question_field_map_resposne(question_key :int , service_db_session = None):
+async def get_question_field_map_resposne(table_name : str ,question_key :int , service_db_session = None):
     """
     get_question_field_map_resposne
     
@@ -26,7 +26,7 @@ async def get_question_field_map_resposne(question_key :int , service_db_session
     :return: Description
     :rtype: dict[str, Any]
     """
-    initial_question = await get_question(service_db_session ,question_key)
+    initial_question = await get_question(table_name, service_db_session ,question_key)
     message = {
         "question_key" : initial_question.current_question_key,
         "fields": initial_question.fields,
@@ -228,35 +228,7 @@ async def create_dynamic_models(question_entries, ChatbotName):
         logger.error(f"Error while creating dynamic models for {ChatbotName}: {str(e)}")
         raise
 
-# async def create_dynamic_models(question_entries, ChatbotName):
-#     logger.info(log_format(msg="Initial API call to create dynamic models"))
 
-#     _, engine= await create_service_db_session()
-#     fields = {}
-#     # Table name based on ChatbotName
-#     table_name = f"{ChatbotName}_details"
-    
-#     for entry in question_entries:
-#         field = entry['fields']
-#         msg_type = entry['msg_type']
-        
-#         # Map msg_type to SQLAlchemy column type dynamically
-#         column_type = msg_type_to_column(msg_type)
-        
-#         if column_type:
-#             fields[field] = (column_type)
-
-#     logger.info(log_format(msg="Initial API call to create dynamic models"))
-
-#     DynamicModel = dynamic_question_filed_map(table_name, fields)
-
-#     # Create the table in the database
-#     Base.metadata.create_all(engine)
-#     print(f"Table {table_name} created successfully.")
-
-
-
-from logger.logger import logger, log_format
 
 async def create_question_field_map_dynamic_models(question_entries, chatbot_name, db: Session):
     """
@@ -315,46 +287,53 @@ def clear_pycache():
 
 
 
+from sqlalchemy import inspect
 
-# async def create_dynamic_models(question_entries, ChatbotName):
-#     """
-#     create_dynamic_models
+def get_chatbot_tables(engine, pattern="_question_field_map"):
+    """
+    Fetch all dynamic chatbot table names matching the pattern.
+    """
+    inspector = inspect(engine)
+    all_tables = inspector.get_table_names()
+    # Filter tables based on the naming convention
+    chatbot_tables = [table for table in all_tables if table.endswith(pattern)]
+    return chatbot_tables
+
+
+
+from sqlalchemy import Table, MetaData
+from sqlalchemy.orm import Session
+
+def fetch_table_data(engine, table_name):
+    """
+    Fetch data from a dynamically created table.
+    """
+    metadata = MetaData()
+    # Reflect the table structure
+    table = Table(table_name, metadata, autoload_with=engine)
     
-#     :param question_entries: Description
-#     :type question_entries: 
-#     :param ChatbotName: Description
-#     :type ChatbotName: 
-#     """
-#     try:
-#         # File handling logic to create a new file and copy static_model.py content
-#         static_model_path = constant.STATIC_MODEL_PATH
-#         dynamic_model_path = constant.DYNAMIC_MODEL_PATH
-#         new_file_path = f"{dynamic_model_path}/{ChatbotName}_model.py"
+    with Session(engine) as session:
+        # Query the table
+        query = session.query(table)
+        results = query.all()
+        return [dict(row._mapping) for row in results]
 
-#         logger.info(log_format(msg="create_dynamic_models"))
 
-#         new_class_name = replace_table_and_class_name(static_model_path, dynamic_model_path, ChatbotName)
-        
-#         with open(new_file_path, "a+") as f:
-#             for qes in question_entries:
-#                 try:
-#                     dynamic_field = qes["fields"]
-#                     msg_type_column = qes["msg_type"]
-#                     if msg_type_column in [3, 4]:
-#                         msg_column = constant.value_to_type[msg_type_column].name.upper()
-#                     else:
-#                         msg_column = constant.value_to_type[msg_type_column].name.capitalize()
-#                     f.write(f"\n    {dynamic_field} = Column({msg_column})")
-#                     f.seek(0)
-#                 except KeyError as e:
-#                     logger.error(log_format(msg=f"Error processing question entry  : {e}"))
-#                 except Exception as e:
-#                     logger.error(log_format(msg=f"Unexpected error while writing dynamic fields :  {e}"))
-#         register_dynamic_model(new_class_name,new_file_path)
-#         run_alembic_migration()
+async def fetch_chatbot_table_details(chatbot_name):
+    """
+    Fetch details of the dynamic chatbot tables.
+    """
+    # Create a service DB session and engine
+    service_db_session, engine = await create_service_db_session()
 
-#     except FileNotFoundError as e:
-#         logger.error(log_format(msg=f"File not found error : {e}",
-#                                file_path=static_model_path))
-#     except Exception as e:
-#         logger.error(log_format(msg=f"Unexpected error in create_dynamic_models : {e}"))
+    # Fetch all chatbot-related tables
+    chatbot_tables = get_chatbot_tables(engine)
+    logger.info(f"Found chatbot tables: {chatbot_tables}")
+
+    chatbot_data = {}
+    for table_name in chatbot_tables:
+        if chatbot_name in table_name:  # Filter tables for the specific chatbot
+            data = fetch_table_data(engine, table_name)
+            chatbot_data[table_name] = data
+
+            return chatbot_data , table_name

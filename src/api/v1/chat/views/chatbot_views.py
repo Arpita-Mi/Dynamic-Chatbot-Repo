@@ -7,7 +7,7 @@ from src.api.v1.chat.repositories.chatbot_repository import save_question_payloa
 from src.api.v1.chat.services.mongo_services import chatbot_insert_message , fetch_question_data_from_mongo 
 from src.api.v1.chat.services.chatbot_services import create_message, construct_response , get_question_field_map_resposne ,\
 update_latest_message,save_respose_db , update_latest_message_with_image , generate_image_url , get_question_data_from_room,\
-create_dynamic_models , create_question_field_map_dynamic_models , clear_pycache
+create_dynamic_models , create_question_field_map_dynamic_models , clear_pycache , fetch_chatbot_table_details
 from src.api.v1.chat.constants import constant
 from database.db_mongo_connect import create_mongo_connection
 from database.db_connection import create_service_db_session
@@ -70,14 +70,9 @@ async def insert_chatbot_conversation(request: Request, scr: List[Message], Chat
             for idx, message in enumerate(scr)
         ]
 
-        # insert question entries to the SQL database (Question Field Map)
-        # await save_question_payload_query(service_db_session, question_entries)
-        # create_dynamic_question_field_map(question_entries, ChatbotName)
-        # Create dynamic models
-
         #create question field map
         await create_question_field_map_dynamic_models(question_entries, ChatbotName, service_db_session)
-        #create {chatbot}_detials tbale
+        #create {chatbot}_detials table
         await create_dynamic_models(question_entries, ChatbotName)
 
     except Exception as e:
@@ -91,7 +86,7 @@ async def insert_chatbot_conversation(request: Request, scr: List[Message], Chat
 
 @router.post("/chatbot/start_chatbot_conversation", summary="start_chatbot_conversation",
              status_code=status.HTTP_200_OK)
-async def start_chatbot_conversation(request: Request, scr: Form = Depends(Payload), language_id: str = Header(1),
+async def start_chatbot_conversation(request: Request, scr: Form = Depends(Payload), ChatbotName = str ,language_id: str = Header(1),
                                    image :List[UploadFile]=File(None) 
                                 ):
     """
@@ -113,13 +108,16 @@ async def start_chatbot_conversation(request: Request, scr: Form = Depends(Paylo
             db[user_collection].insert_one(ques)
             if "_id" in ques:
                 ques["_id"] = str(ques["_id"])
+            _, table_name = await fetch_chatbot_table_details(ChatbotName)
 
-            response = await get_question_field_map_resposne(service_db_session=service_db_session ,question_key = scr.question_key)
-            if response:
-                ques["id"] = scr.id
-                ques["response"] = scr.message
-                ques["current_question_id"] = scr.question_key
-                user_details = await save_respose_db(service_db_session=service_db_session ,question_data=ques,response=response)
+
+            response = await get_question_field_map_resposne(table_name , service_db_session=service_db_session ,question_key = scr.question_key)
+            print(response)
+            # if response:
+            #     ques["id"] = scr.id
+            #     ques["response"] = scr.message
+            #     ques["current_question_id"] = scr.question_key
+            #     user_details = await save_respose_db(service_db_session=service_db_session ,question_data=ques,response=response)
 
         elif scr.msg_type in [1, 2 ,3, 4]:     #[1:text , 2:boolean , 3:multiple selection , 4:Single Select]
             #UPDATE THE RESPOSNE TO MONGO

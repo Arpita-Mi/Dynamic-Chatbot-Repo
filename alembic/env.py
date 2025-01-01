@@ -32,7 +32,6 @@ target_metadata = Base.metadata
 # *******************|DATABASE CONNECTION URL|*******************************
 
 SQLALCHEMY_DATABASE_URI = f"postgresql+psycopg2://{settings.SERVICE_DB_USER}:{settings.SERVICE_DB_PASSWORD}@{settings.SERVICE_DB_HOSTNAME}:{settings.SERVICE_DB_PORT}/{settings.SERVICE_DB}"
-print(SQLALCHEMY_DATABASE_URI)
 config.set_main_option("sqlalchemy.url", str(SQLALCHEMY_DATABASE_URI))
 
 # ****************************************************************************

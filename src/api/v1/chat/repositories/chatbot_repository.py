@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import Table , MetaData
 from src.api.v1.chat.models.models import QuestionFieldsMap , UserResponse
 from database.unit_of_work import SqlAlchemyUnitOfWork
 from logger.logger import logger , log_format
@@ -6,7 +7,7 @@ from alembic import command
 from alembic.config import Config
 from src.api.v1.chat.constants import constant
 
-async def get_question(db:Session, question_key : int):
+async def get_question(table_name : str ,db:Session, question_key : int):
     """    
     :param db: Description
     :type db: Session
@@ -17,11 +18,13 @@ async def get_question(db:Session, question_key : int):
     """
     try:
         with SqlAlchemyUnitOfWork(db) as db:
+            metadata = MetaData()
+            dynamic_table = Table(table_name, metadata, autoload_with=db.bind)
 
             initial_question = db.query(
-                QuestionFieldsMap.current_question_key,
-                                        QuestionFieldsMap.fields
-            ).filter(QuestionFieldsMap.current_question_key == question_key).first()
+                dynamic_table.c.current_question_key,
+                                        dynamic_table.c.fields
+            ).filter(dynamic_table.c.current_question_key == question_key).first()
     except Exception as e:
         raise Exception("Something went wrong")
     else:
