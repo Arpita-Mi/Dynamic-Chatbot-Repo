@@ -1,13 +1,14 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import Table , MetaData
 from src.api.v1.chat.models.models import QuestionFieldsMap , UserResponse
+from database.db_connection import create_service_db_session
 from database.unit_of_work import SqlAlchemyUnitOfWork
 from logger.logger import logger , log_format
 from alembic import command
 from alembic.config import Config
 from src.api.v1.chat.constants import constant
 
-async def get_question(db:Session, question_key : int):
+async def get_question(table_name , db:Session, question_key : int):
     """    
     :param db: Description
     :type db: Session
@@ -17,12 +18,14 @@ async def get_question(db:Session, question_key : int):
     :rtype: Row[Tuple[int, str]] | Any | None
     """
     try:
+        _, engine = await create_service_db_session()
+        metadata =  MetaData()
         with SqlAlchemyUnitOfWork(db) as db:
-
+            dynamci_tables =  Table(table_name, metadata , autoload_with=engine)
             initial_question = db.query(
-                QuestionFieldsMap.current_question_key,
-                                        QuestionFieldsMap.fields
-            ).filter(QuestionFieldsMap.current_question_key == question_key).first()
+                dynamci_tables.c.current_question_key,
+                                        dynamci_tables.c.fields
+            ).filter(dynamci_tables.c.current_question_key == question_key).first()
     except Exception as e:
         raise Exception("Something went wrong")
     else:
@@ -47,7 +50,7 @@ async def save_user_response(db: Session, question_data: dict, response: dict):
             question_key = question_data["message"]["question_key"]
         
             current_question_key = question_data.get("current_question_id") if question_key != 1 else question_key
-            if question_key ==2 and current_question_key == 1:
+            if question_key == 2 and current_question_key == 1:
                 return (question_key)
             question_field_map = (
                 db.query(QuestionFieldsMap)
@@ -86,9 +89,76 @@ async def save_user_response(db: Session, question_data: dict, response: dict):
     except Exception as e:
         raise Exception("Something went wrong while saving the response.")
     
+async def save_respose_dynamic_db(question_field_map_table:str , details_table: str , question_data : dict , response :dict,service_db_session = None):
+    """
+    save_respose_db
+    """
+   
+    initial_question = await save_dynamic_user_response(question_field_map_table , details_table,service_db_session ,question_data,response)
+    initial_question = {"id" : initial_question.id  }
+    return initial_question
 
+async def save_dynamic_user_response(question_field_map_table ,details_table, db: Session, question_data: dict, response: dict):
+    """    
+    :param db: Description
+    :type db: Session
+    :param question_data: Description
+    :type question_data: dict
+    :param response: Description
+    :type response: dict
+    :return: Description
+    :rtype: UserResponse | Any
+    """
+    try:
+        with SqlAlchemyUnitOfWork(db) as db:
+            metadata = MetaData()
+            dynamic_question_map_table = Table(question_field_map_table, metadata, autoload_with=db.bind)
+            dynamic_details_table =  Table(details_table , metadata , autoload_with=db.bind)
+            question_key = question_data["message"]["question_key"]
+        
+            current_question_key = question_data.get("current_question_id") if question_key != 1 else question_key
+            if question_key ==2 and current_question_key == 1:
+                return (question_key)
+            question_field_map = (
+                db.query(dynamic_question_map_table)
+                .filter(dynamic_question_map_table.c.current_question_key == current_question_key)
+                .first()
+            )
 
+            if not question_field_map:
+                raise Exception(f"No field mapping found for question_key {question_key}")
+            field_name = question_field_map.fields
 
+            previous_response = db.query(dynamic_details_table).filter(dynamic_details_table.c.id == question_data["id"]).first()
+            #Update the Resposne field
+            if previous_response:
+                update_stmt = dynamic_details_table.update().where(dynamic_details_table.c.id == previous_response.id).values({field_name: question_data.get("response")})
+                db.execute(update_stmt)
+                db.commit()
+
+                # Fetch updated response
+                updated_response = db.query(dynamic_details_table).filter(dynamic_details_table.c.id == previous_response.id).first()
+                return updated_response
+            else:
+                if question_key == 1:
+                    # Create a new response with null message for question_key == 1
+                    new_row_data = {field_name: None}  # Add other required fields here
+                    db.execute(dynamic_details_table.insert().values(**new_row_data))
+                    db.commit()
+                    new_response = db.query(dynamic_details_table).order_by(dynamic_details_table.c.id.desc()).first()
+                    return new_response
+                else:
+                    # Create a new response with the provided message
+                    new_row_data = {field_name: question_data.get("message")}
+                    db.execute(dynamic_details_table.insert().values(**new_row_data))
+                    db.commit()
+                    new_response = db.query(dynamic_details_table).order_by(dynamic_details_table.c.id.desc()).first()
+                    return new_response
+
+            
+
+    except Exception as e:
+        raise Exception("Something went wrong while saving the response.")
 
 async def save_question_payload_query(db: Session, question_entries,DynamicTable):
     """
@@ -98,11 +168,6 @@ async def save_question_payload_query(db: Session, question_entries,DynamicTable
     try:
         with SqlAlchemyUnitOfWork(db) as db:
             for question_entry in question_entries:
-                # question_fields_map = QuestionFieldsMap(
-                #     current_question_key=question_entry["current_question_key"],
-                #     fields=question_entry["fields"],
-                #     msg_type=question_entry["msg_type"]
-                # )
                 record = DynamicTable(
                         current_question_key=question_entry["current_question_key"],
                         fields=question_entry["fields"],
