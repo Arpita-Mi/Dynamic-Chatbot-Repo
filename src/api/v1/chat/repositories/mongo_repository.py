@@ -36,7 +36,7 @@ async def insert_data(db, collection_name: str, data: dict):
         raise Exception("Something went wrong")
 
 
-def get_question_key_data(question_key):
+def get_question_key_data(ChatbotName ,question_key):
     """
     Docstring for get_question_key_data
     
@@ -46,7 +46,7 @@ def get_question_key_data(question_key):
     :rtype: Any | None
     """
     client, db = MongoUnitOfWork().mdb_connect()
-    master_collection  = constant.MASTER_COLLECTION
+    master_collection  =  f"{ChatbotName}{constant.MASTER_COLLECTION}"
     question_data = db[master_collection].find_one({"message": {"$elemMatch": {"question_key": question_key }}},
                             {"message.$": 1, "_id": 0})
     return question_data

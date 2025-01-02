@@ -1,7 +1,7 @@
 from enum import Enum
 from sqlalchemy import String , Integer , Boolean , JSON , Float
-MASTER_COLLECTION = "demo"
-USER_COLLECTION = "user_data"
+MASTER_COLLECTION = "_chatbot"
+USER_COLLECTION = "_conversation_data"
 IMAGE_BASE_URL =  "https://example.com/images"
 STATIC_MODEL_PATH = "/home/mind/Dynamic-Chatbot-Repo-Git-Hub/src/api/v1/chat/models/static_model.py"
 DYNAMIC_MODEL_PATH = "/home/mind/Dynamic-Chatbot-Repo-Git-Hub/src/api/v1/chat/models/dynamic_models"

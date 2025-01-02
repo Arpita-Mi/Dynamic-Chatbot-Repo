@@ -1,21 +1,17 @@
 from fastapi import APIRouter, status, Request, Header, Depends, Query, HTTPException, UploadFile , File,Form 
 from typing import List
-from sqlalchemy import String , Integer
-from config.config import settings
 from src.api.v1.chat.schemas.schema import Payload , Message
 from src.api.v1.chat.repositories.chatbot_repository import save_respose_dynamic_db, fetch_question_payload_query
 from src.api.v1.chat.services.mongo_services import chatbot_insert_message ,create_message ,construct_response ,update_latest_message, update_latest_message_with_image ,\
 generate_image_url , get_question_data_from_room , get_msg_type_from_master_mongo
 from src.api.v1.chat.services.chatbot_services import get_question_field_map_resposne ,save_respose_db ,create_dynamic_models ,\
 create_question_field_map_dynamic_models , clear_pycache , fetch_chatbot_table_details
-from src.api.v1.chat.constants import constant
 from database.db_mongo_connect import create_mongo_connection
 from database.db_connection import create_service_db_session
 from datetime import datetime
 from pymongo import DESCENDING
+from database.db_mongo_connect import MongoUnitOfWork
 from logger.logger import logger , log_format
-import os
-import shutil
 router = APIRouter(prefix="/statistic")
 
 
@@ -35,9 +31,11 @@ async def insert_chatbot_conversation(request: Request, scr: List[Message], Chat
         # Prepare database credentials
         clear_pycache()
         service_db_session, _= await create_service_db_session()
-
+        collection_name =  f"{ChatbotName}_chatbot"
         # MongoDB connection
-        db , collection_name , _ = create_mongo_connection()
+        client, db = MongoUnitOfWork().mdb_connect()
+
+        # db , collection_name , _ = create_mongo_connection()
         
         response_data = []
         # Current timestamp
@@ -98,16 +96,18 @@ async def start_chatbot_conversation(request: Request, scr: Form = Depends(Paylo
         service_db_session, _ = await create_service_db_session()
         
         # MongoDB connection
-        db ,_ , user_collection = create_mongo_connection()
+        # db ,_ , user_collection = create_mongo_connection()
+        client, db = MongoUnitOfWork().mdb_connect()
+        user_collection =  f"{ChatbotName}_conversation_data"
         latest_message = db[user_collection].find_one(
             {"room_id": scr.room_id}, sort=[("created_at", DESCENDING)]
         )
 
 
         if scr.question_key == 1 :
-            msg_type  = get_msg_type_from_master_mongo()
+            msg_type  = get_msg_type_from_master_mongo(ChatbotName)
                 
-            ques = create_message(scr, scr.question_key)
+            ques = create_message(ChatbotName ,scr, scr.question_key)
             db[user_collection].insert_one(ques)
             if "_id" in ques:
                 ques["_id"] = str(ques["_id"])
@@ -139,7 +139,7 @@ async def start_chatbot_conversation(request: Request, scr: Form = Depends(Paylo
             
 
             #INSERT QUESTION TO MONGO
-            ques = create_message(scr, scr.question_key) #fetch the question details from master db(mongo) and create a dict 
+            ques = create_message(ChatbotName ,scr, scr.question_key) #fetch the question details from master db(mongo) and create a dict 
             db[user_collection].insert_one(ques)
             if "_id" in ques:
                 ques["_id"] = str(ques["_id"])
@@ -175,7 +175,7 @@ async def start_chatbot_conversation(request: Request, scr: Form = Depends(Paylo
                 else:
                     update_latest_message(db, latest_message, scr.message, user_collection)
 
-            ques = create_message(scr, scr.question_key) #fetch the question details from master db(mongo) and create a dict 
+            ques = create_message(ChatbotName , scr, scr.question_key) #fetch the question details from master db(mongo) and create a dict 
             db[user_collection].insert_one(ques)
             if "_id" in ques:
                 ques["_id"] = str(ques["_id"])
@@ -194,7 +194,7 @@ async def start_chatbot_conversation(request: Request, scr: Form = Depends(Paylo
                 user_details = await save_respose_db(service_db_session=service_db_session ,question_data=ques,response=response)
 
 
-        return construct_response(scr, scr.question_key)
+        return construct_response(ChatbotName , scr, scr.question_key)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -202,11 +202,10 @@ async def start_chatbot_conversation(request: Request, scr: Form = Depends(Paylo
 
 
 
-
 @router.get("/chatbot/retrive_conversation", summary="dynamic chatbot conversation",
             status_code=status.HTTP_200_OK)
-async def retrive_convsersation(request: Request, room_id :int ,language_id: str = Header(1)):
-    room_list = get_question_data_from_room(room_id)
+async def retrive_convsersation(ChatbotName  , request: Request, room_id :int ,language_id: str = Header(1)):
+    room_list = get_question_data_from_room(ChatbotName , room_id)
     return room_list
 
 

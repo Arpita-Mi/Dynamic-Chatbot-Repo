@@ -50,14 +50,14 @@ async def chatbot_update_message(db, collection_name, message_id: str, current_q
     return res
 
 
-def fetch_question_data_from_mongo(question_key):
+def fetch_question_data_from_mongo(ChatbotName , question_key):
     """    
     :param question_key: Description
     :type question_key: 
     :return: Description
     :rtype: Any | None
     """
-    question_data = get_question_key_data(question_key)
+    question_data = get_question_key_data(ChatbotName , question_key)
     if question_data:
         list_question = question_data.get("message")
         ques = list_question[0]
@@ -80,7 +80,7 @@ async def update_message(db, user_collection, current_question_id, update_values
 
 
 
-def create_message(scr: Payload, question_key: int) -> dict:
+def create_message(ChatbotName , scr: Payload, question_key: int) -> dict:
     """
     create_message
     
@@ -95,7 +95,7 @@ def create_message(scr: Payload, question_key: int) -> dict:
     return {
         "room_id": scr.room_id,
         "sender_id": scr.sender_id,
-        "message": fetch_question_data_from_mongo(question_key=question_key),
+        "message": fetch_question_data_from_mongo(ChatbotName , question_key=question_key),
         "created_at": time_now
     }
 
@@ -154,7 +154,7 @@ def update_latest_message_with_image(db,  latest_message, image_data, user_colle
 
 
 
-def construct_response(scr: Payload, question_key: int) -> dict:
+def construct_response(ChatbotName ,scr: Payload, question_key: int) -> dict:
     """
     construct_response
     
@@ -168,7 +168,7 @@ def construct_response(scr: Payload, question_key: int) -> dict:
     return {
         "room_id": scr.room_id,
         "sender_id": scr.sender_id,
-        "message": fetch_question_data_from_mongo(
+        "message": fetch_question_data_from_mongo(ChatbotName,
             question_key=question_key
         )
     }
@@ -190,7 +190,7 @@ def generate_image_url(image_data) -> str:
 
 
 
-def get_question_data_from_room(room_id):
+def get_question_data_from_room(ChatbotName ,room_id):
     """ 
     :param room_id: Description
     :type room_id: 
@@ -198,15 +198,15 @@ def get_question_data_from_room(room_id):
     :rtype: list
     """
     client, db = MongoUnitOfWork().mdb_connect()
-    user_collection  =  constant.USER_COLLECTION
+    user_collection  =  f"{ChatbotName}{constant.USER_COLLECTION}"
     room_data = db[user_collection].find({"room_id": room_id },
                             {"room_id":0 ,"_id": 0})
     room_list = list(room_data)
     return room_list
 
-def get_msg_type_from_master_mongo():
+def get_msg_type_from_master_mongo(ChatbotName):
     client, db = MongoUnitOfWork().mdb_connect()
-    mater_collection  =  constant.MASTER_COLLECTION
+    mater_collection  = f"{ChatbotName}{constant.MASTER_COLLECTION}"
     master_data = db[mater_collection].find({})
     # print(list(master_data))
     for record in master_data:
