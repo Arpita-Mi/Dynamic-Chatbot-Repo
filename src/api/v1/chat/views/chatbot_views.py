@@ -5,7 +5,7 @@ from config.config import settings
 from src.api.v1.chat.schemas.schema import Payload , Message
 from src.api.v1.chat.repositories.chatbot_repository import save_respose_dynamic_db, fetch_question_payload_query
 from src.api.v1.chat.services.mongo_services import chatbot_insert_message ,create_message ,construct_response ,update_latest_message, update_latest_message_with_image ,\
-generate_image_url , get_question_data_from_room
+generate_image_url , get_question_data_from_room , get_msg_type_from_master_mongo
 from src.api.v1.chat.services.chatbot_services import get_question_field_map_resposne ,save_respose_db ,create_dynamic_models ,\
 create_question_field_map_dynamic_models , clear_pycache , fetch_chatbot_table_details
 from src.api.v1.chat.constants import constant
@@ -103,7 +103,10 @@ async def start_chatbot_conversation(request: Request, scr: Form = Depends(Paylo
             {"room_id": scr.room_id}, sort=[("created_at", DESCENDING)]
         )
 
-        if scr.question_key == 1 and scr.msg_type is None:
+
+        if scr.question_key == 1 :
+            msg_type  = get_msg_type_from_master_mongo()
+                
             ques = create_message(scr, scr.question_key)
             db[user_collection].insert_one(ques)
             if "_id" in ques:
@@ -117,7 +120,8 @@ async def start_chatbot_conversation(request: Request, scr: Form = Depends(Paylo
                 (table for table in chatbot_tables if table.endswith("_details")),
                 None
             )
-
+            # if msg_type == constant.MsgType.Boolean.value:
+            #         return
             if not question_field_map_table:
                 raise Exception("No table matching '_question_field_map' found for the chatbot.")
             response = await get_question_field_map_resposne(table_name = question_field_map_table , service_db_session=service_db_session ,question_key = scr.question_key)
@@ -125,7 +129,7 @@ async def start_chatbot_conversation(request: Request, scr: Form = Depends(Paylo
                 ques["id"] = scr.id
                 ques["response"] = scr.message
                 ques["current_question_id"] = scr.question_key
-                user_details = await save_respose_dynamic_db(question_field_map_table, details_table ,service_db_session=service_db_session ,question_data=ques,response=response)
+                user_details = await save_respose_dynamic_db(msg_type , question_field_map_table, details_table ,service_db_session=service_db_session ,question_data=ques,response=response)
 
 
         elif scr.msg_type in [1, 2 ,3, 4]:     #[1:text , 2:boolean , 3:multiple selection , 4:Single Select]
@@ -133,6 +137,7 @@ async def start_chatbot_conversation(request: Request, scr: Form = Depends(Paylo
             if latest_message:
                 update_latest_message(db, latest_message, scr.message, user_collection)
             
+
             #INSERT QUESTION TO MONGO
             ques = create_message(scr, scr.question_key) #fetch the question details from master db(mongo) and create a dict 
             db[user_collection].insert_one(ques)
@@ -158,7 +163,7 @@ async def start_chatbot_conversation(request: Request, scr: Form = Depends(Paylo
                 ques["id"] = scr.id
                 ques["response"] = scr.message
                 ques["current_question_id"] = scr.current_question_id
-                user_details = await save_respose_dynamic_db(question_field_map_table, details_table ,service_db_session=service_db_session ,question_data=ques,response=response)
+                user_details = await save_respose_dynamic_db(scr.msg_type ,question_field_map_table, details_table ,service_db_session=service_db_session ,question_data=ques,response=response)
         
         
 

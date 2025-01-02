@@ -7,6 +7,7 @@ from logger.logger import logger , log_format
 from alembic import command
 from alembic.config import Config
 from src.api.v1.chat.constants import constant
+from types import SimpleNamespace
 
 async def get_question(table_name , db:Session, question_key : int):
     """    
@@ -46,59 +47,59 @@ async def save_user_response(db: Session, question_data: dict, response: dict):
     :rtype: UserResponse | Any
     """
     try:
-        with SqlAlchemyUnitOfWork(db) as db:
-            question_key = question_data["message"]["question_key"]
+        # with SqlAlchemyUnitOfWork(db) as db:
+        #     question_key = question_data["message"]["question_key"]
         
-            current_question_key = question_data.get("current_question_id") if question_key != 1 else question_key
-            if question_key == 2 and current_question_key == 1:
-                return (question_key)
-            question_field_map = (
-                db.query(QuestionFieldsMap)
-                .filter(QuestionFieldsMap.current_question_key == current_question_key)
-                .first()
-            )
+        #     current_question_key = question_data.get("current_question_id") if question_key != 1 else question_key
+        #     if question_key == 2 and current_question_key == 1:
+        #         return SimpleNamespace(id=question_key)  #returns object with attributes dynamically
+        #     question_field_map = (
+        #         db.query(QuestionFieldsMap)
+        #         .filter(QuestionFieldsMap.current_question_key == current_question_key)
+        #         .first()
+        #     )
 
-            if not question_field_map:
-                raise Exception(f"No field mapping found for question_key {question_key}")
+        #     if not question_field_map:
+        #         raise Exception(f"No field mapping found for question_key {question_key}")
 
-            field_name = question_field_map.fields
+        #     field_name = question_field_map.fields
 
-            previous_response = db.query(UserResponse).filter(UserResponse.id == question_data["id"]).first()
-            #Update the Resposne field
-            if previous_response:
-                setattr(previous_response, field_name, question_data.get("response"))
-                db.flush()  
-                db.commit()  
-                db.refresh(previous_response) 
-                return previous_response
-            else:
-                if question_key == 1:
-                    # Create a new response with null message for question_key == 1
-                    new_response = UserResponse(**{field_name: None})
-                else:
-                    # Create a new response with the provided message
-                    new_response = UserResponse(**{field_name: question_data.get("message")})
-                # new_response = UserResponse(**{field_name: response.get("message")})
-                db.add(new_response) 
-                db.commit()  
-                db.refresh(new_response) 
-                return new_response
-
+        #     previous_response = db.query(UserResponse).filter(UserResponse.id == question_data["id"]).first()
+        #     #Update the Resposne field
+        #     if previous_response:
+        #         setattr(previous_response, field_name, question_data.get("response"))
+        #         db.flush()  
+        #         db.commit()  
+        #         db.refresh(previous_response) 
+        #         return previous_response
+        #     else:
+        #         if question_key == 1:
+        #             # Create a new response with null message for question_key == 1
+        #             new_response = UserResponse(**{field_name: None})
+        #         else:
+        #             # Create a new response with the provided message
+        #             new_response = UserResponse(**{field_name: question_data.get("message")})
+        #         # new_response = UserResponse(**{field_name: response.get("message")})
+        #         db.add(new_response) 
+        #         db.commit()  
+        #         db.refresh(new_response) 
+        #         return new_response
+        pass
             
 
     except Exception as e:
         raise Exception("Something went wrong while saving the response.")
     
-async def save_respose_dynamic_db(question_field_map_table:str , details_table: str , question_data : dict , response :dict,service_db_session = None):
+async def save_respose_dynamic_db(msg_type , question_field_map_table:str , details_table: str , question_data : dict , response :dict,service_db_session = None):
     """
     save_respose_db
     """
    
-    initial_question = await save_dynamic_user_response(question_field_map_table , details_table,service_db_session ,question_data,response)
+    initial_question = await save_dynamic_user_response(msg_type,question_field_map_table , details_table,service_db_session ,question_data,response)
     initial_question = {"id" : initial_question.id  }
     return initial_question
 
-async def save_dynamic_user_response(question_field_map_table ,details_table, db: Session, question_data: dict, response: dict):
+async def save_dynamic_user_response(msg_type,question_field_map_table ,details_table, db: Session, question_data: dict, response: dict):
     """    
     :param db: Description
     :type db: Session
@@ -117,8 +118,8 @@ async def save_dynamic_user_response(question_field_map_table ,details_table, db
             question_key = question_data["message"]["question_key"]
         
             current_question_key = question_data.get("current_question_id") if question_key != 1 else question_key
-            if question_key ==2 and current_question_key == 1:
-                return (question_key)
+
+                #here add the blank value
             question_field_map = (
                 db.query(dynamic_question_map_table)
                 .filter(dynamic_question_map_table.c.current_question_key == current_question_key)
@@ -129,6 +130,12 @@ async def save_dynamic_user_response(question_field_map_table ,details_table, db
                 raise Exception(f"No field mapping found for question_key {question_key}")
             field_name = question_field_map.fields
 
+            if question_key == 2 and current_question_key == 1 and msg_type == constant.MsgType.Boolean.value:
+                new_row_data = {field_name: None}  # Add other required fields here
+                db.execute(dynamic_details_table.insert().values(**new_row_data))
+                db.commit()
+                new_response = db.query(dynamic_details_table).order_by(dynamic_details_table.c.id.desc()).first()
+                return new_response
             previous_response = db.query(dynamic_details_table).filter(dynamic_details_table.c.id == question_data["id"]).first()
             #Update the Resposne field
             if previous_response:
@@ -140,7 +147,8 @@ async def save_dynamic_user_response(question_field_map_table ,details_table, db
                 updated_response = db.query(dynamic_details_table).filter(dynamic_details_table.c.id == previous_response.id).first()
                 return updated_response
             else:
-                if question_key == 1:
+                # for msg_type ==1 
+                if question_key == 1 and msg_type != constant.MsgType.Boolean.value :
                     # Create a new response with null message for question_key == 1
                     new_row_data = {field_name: None}  # Add other required fields here
                     db.execute(dynamic_details_table.insert().values(**new_row_data))
@@ -148,12 +156,7 @@ async def save_dynamic_user_response(question_field_map_table ,details_table, db
                     new_response = db.query(dynamic_details_table).order_by(dynamic_details_table.c.id.desc()).first()
                     return new_response
                 else:
-                    # Create a new response with the provided message
-                    new_row_data = {field_name: question_data.get("message")}
-                    db.execute(dynamic_details_table.insert().values(**new_row_data))
-                    db.commit()
-                    new_response = db.query(dynamic_details_table).order_by(dynamic_details_table.c.id.desc()).first()
-                    return new_response
+                    return SimpleNamespace(id=question_key) 
 
             
 

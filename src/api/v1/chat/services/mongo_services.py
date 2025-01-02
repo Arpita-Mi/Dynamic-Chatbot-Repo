@@ -203,3 +203,14 @@ def get_question_data_from_room(room_id):
                             {"room_id":0 ,"_id": 0})
     room_list = list(room_data)
     return room_list
+
+def get_msg_type_from_master_mongo():
+    client, db = MongoUnitOfWork().mdb_connect()
+    mater_collection  =  constant.MASTER_COLLECTION
+    master_data = db[mater_collection].find({})
+    # print(list(master_data))
+    for record in master_data:
+        for message in record.get('message', []):
+            if message.get('question_key') == 1:
+                print("msg_type:", message.get('msg_type'))
+                return message.get('msg_type')
