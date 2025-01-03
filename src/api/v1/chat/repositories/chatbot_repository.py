@@ -99,6 +99,8 @@ async def save_respose_dynamic_db(msg_type , question_field_map_table:str , deta
     initial_question = {"id" : initial_question.id  }
     return initial_question
 
+
+
 async def save_dynamic_user_response(msg_type,question_field_map_table ,details_table, db: Session, question_data: dict, response: dict):
     """    
     :param db: Description
@@ -113,55 +115,69 @@ async def save_dynamic_user_response(msg_type,question_field_map_table ,details_
     try:
         with SqlAlchemyUnitOfWork(db) as db:
             metadata = MetaData()
+            
             dynamic_question_map_table = Table(question_field_map_table, metadata, autoload_with=db.bind)
-            dynamic_details_table =  Table(details_table , metadata , autoload_with=db.bind)
-            question_key = question_data["message"]["question_key"]
-        
-            current_question_key = question_data.get("current_question_id") if question_key != 1 else question_key
+            dynamic_details_table = Table(details_table, metadata, autoload_with=db.bind)
+            logger.info(log_format(msg=f"loads tables dynamically from db {dynamic_question_map_table} and {dynamic_details_table}"))
 
-                #here add the blank value
-            question_field_map = (
-                db.query(dynamic_question_map_table)
-                .filter(dynamic_question_map_table.c.current_question_key == current_question_key)
+
+            question_key = question_data["message"]["question_key"]
+            current_question_key = question_data.get("current_question_id") if question_key != 1 else question_key
+            logger.info(log_format(msg=f"Extract Question Keys : {current_question_key}"))
+
+            try:
+                question_field_map = (
+                    db.query(dynamic_question_map_table)
+                    .filter(dynamic_question_map_table.c.current_question_key == current_question_key)
+                    .first()
+                )
+                logger.info(log_format(msg=f"Fetch the qustion filed map {question_field_map}"))
+
+                # if not question_field_map:
+                #     logger.error(log_format(msg=f"no field mapping found for question_key : {question_key}"))
+                #     raise Exception(f"No field mapping found for question_key {question_key}")
+
+                field_name = question_field_map.fields
+            except ValueError as e:
+                logger.error(log_format(msg=f" ERROR : {e}"))
+
+            # Handle specific cases for question_key and msg_type
+            if  (
+                    (question_key == 2 and current_question_key == 1 and msg_type == constant.MsgType.Boolean.value) or 
+                    (question_key == 1 and msg_type != constant.MsgType.Boolean.value)
+                ):
+                new_row_data = {field_name: None}
+                db.execute(dynamic_details_table.insert().values(**new_row_data))
+                db.commit()
+                return db.query(dynamic_details_table).order_by(dynamic_details_table.c.id.desc()).first()
+
+            # Fetch previous response
+            previous_response = (
+                db.query(dynamic_details_table)
+                .filter(dynamic_details_table.c.id == question_data["id"])
                 .first()
             )
 
-            if not question_field_map:
-                raise Exception(f"No field mapping found for question_key {question_key}")
-            field_name = question_field_map.fields
-
-            if question_key == 2 and current_question_key == 1 and msg_type == constant.MsgType.Boolean.value:
-                new_row_data = {field_name: None}  # Add other required fields here
-                db.execute(dynamic_details_table.insert().values(**new_row_data))
-                db.commit()
-                new_response = db.query(dynamic_details_table).order_by(dynamic_details_table.c.id.desc()).first()
-                return new_response
-            previous_response = db.query(dynamic_details_table).filter(dynamic_details_table.c.id == question_data["id"]).first()
-            #Update the Resposne field
             if previous_response:
-                update_stmt = dynamic_details_table.update().where(dynamic_details_table.c.id == previous_response.id).values({field_name: question_data.get("response")})
+                logger.info(log_format(msg=f"Previous response found, Previous_Response : {previous_response}"))
+                update_stmt = (
+                    dynamic_details_table.update()
+                    .where(dynamic_details_table.c.id == previous_response.id)
+                    .values({field_name: question_data.get("response")})
+                )
                 db.execute(update_stmt)
                 db.commit()
+                return db.query(dynamic_details_table).filter(dynamic_details_table.c.id == previous_response.id).first()
+            logger.warning(log_format(msg=f"No Previous Response Found , Previous_Response :  {previous_response}"))
 
-                # Fetch updated response
-                updated_response = db.query(dynamic_details_table).filter(dynamic_details_table.c.id == previous_response.id).first()
-                return updated_response
-            else:
-                # for msg_type ==1 
-                if question_key == 1 and msg_type != constant.MsgType.Boolean.value :
-                    # Create a new response with null message for question_key == 1
-                    new_row_data = {field_name: None}  # Add other required fields here
-                    db.execute(dynamic_details_table.insert().values(**new_row_data))
-                    db.commit()
-                    new_response = db.query(dynamic_details_table).order_by(dynamic_details_table.c.id.desc()).first()
-                    return new_response
-                else:
-                    return SimpleNamespace(id=question_key) 
-
-            
+            # Default case
+            return SimpleNamespace(id=question_key)
 
     except Exception as e:
-        raise Exception("Something went wrong while saving the response.")
+        raise Exception("Something went wrong while saving the response.") from e
+
+
+
 
 async def save_question_payload_query(db: Session, question_entries,DynamicTable):
     """
