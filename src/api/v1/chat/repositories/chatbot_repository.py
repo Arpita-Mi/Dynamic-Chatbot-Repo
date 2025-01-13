@@ -1,11 +1,9 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import Table , MetaData
-from src.api.v1.chat.models.models import QuestionFieldsMap , UserResponse
+# from src.api.v1.chat.models.models import QuestionFieldsMap , UserResponse
 from database.db_connection import create_service_db_session
 from database.unit_of_work import SqlAlchemyUnitOfWork
 from logger.logger import logger , log_format
-from alembic import command
-from alembic.config import Config
 from src.api.v1.chat.constants import constant
 from types import SimpleNamespace
 
@@ -120,8 +118,11 @@ async def save_dynamic_user_response(msg_type,question_field_map_table ,details_
             dynamic_details_table = Table(details_table, metadata, autoload_with=db.bind)
             logger.info(log_format(msg=f"loads tables dynamically from db {dynamic_question_map_table} and {dynamic_details_table}"))
 
-
-            question_key = question_data["message"]["question_key"]
+            message =  question_data["message"]
+            if message is not None:
+                question_key = question_data["message"]["question_key"]
+            else:
+                question_key = question_data["current_question_id"]
             current_question_key = question_data.get("current_question_id") if question_key != 1 else question_key
             logger.info(log_format(msg=f"Extract Question Keys : {current_question_key}"))
 
@@ -142,6 +143,7 @@ async def save_dynamic_user_response(msg_type,question_field_map_table ,details_
                 logger.error(log_format(msg=f" ERROR : {e}"))
 
             # Handle specific cases for question_key and msg_type
+            # NOTE : msg_type is fetched from mongo question payload 
             if  (
                     (question_key == 2 and current_question_key == 1 and msg_type == constant.MsgType.Boolean.value) or 
                     (question_key == 1 and msg_type != constant.MsgType.Boolean.value)
@@ -201,13 +203,14 @@ async def save_question_payload_query(db: Session, question_entries,DynamicTable
         raise Exception(f"Error saving question data: {e}")
 
 def fetch_question_payload_query(db:Session):
-    try:
-        with SqlAlchemyUnitOfWork(db) as db:
-            question_resposne = db.query(QuestionFieldsMap).all()
-    except Exception as e:
-        raise Exception(f"Error saving question data: {e}")
-    else:
-        return question_resposne
+    pass
+    # try:
+    #     with SqlAlchemyUnitOfWork(db) as db:
+    #         question_resposne = db.query(QuestionFieldsMap).all()
+    # except Exception as e:
+    #     raise Exception(f"Error saving question data: {e}")
+    # else:
+    #     return question_resposne
         
 
     

@@ -9,6 +9,7 @@ create_question_field_map_dynamic_models , clear_pycache , fetch_chatbot_table_d
 from database.db_mongo_connect import create_mongo_connection
 from database.db_connection import create_service_db_session
 from datetime import datetime
+from src.api.v1.chat.constants import constant
 from pymongo import DESCENDING
 from database.db_mongo_connect import MongoUnitOfWork
 from logger.logger import logger , log_format
@@ -31,7 +32,7 @@ async def insert_chatbot_conversation(request: Request, scr: List[Message], Chat
         # Prepare database credentials
         clear_pycache()
         service_db_session, _= await create_service_db_session()
-        collection_name =  f"{ChatbotName}_chatbot"
+        collection_name =  f"{ChatbotName}{constant.MASTER_COLLECTION}"
         # MongoDB connection
         client, db = MongoUnitOfWork().mdb_connect()
 
@@ -98,7 +99,7 @@ async def start_chatbot_conversation(request: Request, scr: Form = Depends(Paylo
         # MongoDB connection
         # db ,_ , user_collection = create_mongo_connection()
         client, db = MongoUnitOfWork().mdb_connect()
-        user_collection =  f"{ChatbotName}_conversation_data"
+        user_collection =  f"{ChatbotName}{constant.USER_COLLECTION}"
         latest_message = db[user_collection].find_one(
             {"room_id": scr.room_id}, sort=[("created_at", DESCENDING)]
         )
