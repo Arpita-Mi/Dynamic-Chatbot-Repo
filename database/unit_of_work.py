@@ -2,7 +2,6 @@ from contextlib import contextmanager
 from fastapi import HTTPException
 
 
-
 @contextmanager
 def SqlAlchemyUnitOfWork(session):
     db = session()
