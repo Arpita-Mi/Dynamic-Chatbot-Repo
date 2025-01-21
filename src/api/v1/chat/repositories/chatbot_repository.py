@@ -40,8 +40,8 @@ async def save_user_response(db: Session, question_data: dict, response: dict):
     """
     try:
         with SqlAlchemyUnitOfWork(db) as db:
-            question_key = question_data["message"]["question_key"]
-        
+            question_key = question_data["message"]["question_key"] if question_data["message"] else None
+            
             current_question_key = question_data.get("current_question_id") if question_key != 1 else question_key
             if question_key ==2 and current_question_key == 1:
                 return SimpleNamespace(id=question_key)  #returns object with attributes dynamically
@@ -80,6 +80,6 @@ async def save_user_response(db: Session, question_data: dict, response: dict):
             
 
     except Exception as e:
-        raise Exception("Something went wrong while saving the response.")
+        raise Exception("Something went wrong while saving the response. {e}")
 
 
