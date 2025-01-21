@@ -1,4 +1,6 @@
 from database.database_manager import DatabaseManager
+
+
 async def get_service_db_session(service_db_credentials: dict): 
     session, _ = DatabaseManager(
         username=service_db_credentials["username"],
