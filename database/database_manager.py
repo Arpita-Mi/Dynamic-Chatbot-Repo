@@ -5,7 +5,6 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import NullPool
 
 
-
 # Declare the database ORM class
 Base = declarative_base()
 
