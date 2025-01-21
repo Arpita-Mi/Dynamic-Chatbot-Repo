@@ -118,11 +118,8 @@ async def save_dynamic_user_response(msg_type,question_field_map_table ,details_
             dynamic_details_table = Table(details_table, metadata, autoload_with=db.bind)
             logger.info(log_format(msg=f"loads tables dynamically from db {dynamic_question_map_table} and {dynamic_details_table}"))
 
-            message =  question_data["message"]
-            if message is not None:
-                question_key = question_data["message"]["question_key"]
-            else:
-                question_key = question_data["current_question_id"]
+    
+            question_key = question_data["message"]["question_key"] if question_data["message"] else None
             current_question_key = question_data.get("current_question_id") if question_key != 1 else question_key
             logger.info(log_format(msg=f"Extract Question Keys : {current_question_key}"))
 
@@ -214,11 +211,11 @@ def fetch_question_payload_query(db:Session):
         
 
     
-def run_alembic_migration():
-    try:
-        alembic_cfg = Config(constant.ALEMBIC_INI_PATH)
-        command.revision(alembic_cfg, message="Dynamic model update", autogenerate=True)
-        command.upgrade(alembic_cfg, "head")
-        logger.info(log_format(msg="run_alembic_migrations"))
-    except Exception as e:
-        logger.error(log_format(msg=f"Error during Alembic migration : {e}"))
+# def run_alembic_migration():
+#     try:
+#         alembic_cfg = Config(constant.ALEMBIC_INI_PATH)
+#         command.revision(alembic_cfg, message="Dynamic model update", autogenerate=True)
+#         command.upgrade(alembic_cfg, "head")
+#         logger.info(log_format(msg="run_alembic_migrations"))
+#     except Exception as e:
+#         logger.error(log_format(msg=f"Error during Alembic migration : {e}"))
