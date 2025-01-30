@@ -5,11 +5,12 @@ from src.api.v1.chat.schemas.schema import Payload
 from src.api.v1.chat.constants import constant
 from database.db_mongo_connect import MongoUnitOfWork
 from datetime import datetime
-# from redis import Redis
+from redis import Redis
 import json
 
-async def chatbot_insert_message(db, collection_name,  message: str):
+async def chatbot_save_message_to_mongo_redis(db, collection_name,  message: str):
     """
+    Insert Message Payload to redis for chaching use
     Insert Message after checking and deleting existing data.
     :param db: MongoDB database connection
     :param collection_name: MongoDB collection name
@@ -17,9 +18,6 @@ async def chatbot_insert_message(db, collection_name,  message: str):
     :param language_id: Language ID to check for existing data
     :return:
     """
-
-    # redis_client = Redis(host="localhost", port=6379, db=0)
-    # redis_key = f"{collection_name}:message"
 
     existing_data = db[collection_name].find({})  
     logger.info(log_format(msg = "Check if data already exists for the given language_id"))
@@ -34,10 +32,16 @@ async def chatbot_insert_message(db, collection_name,  message: str):
     }
     res = await insert_data(db, collection_name, data)
     logger.info(log_format(msg=f"Inserted ({res.inserted_id}) records"))
-    # json_data =  make_serializable(data)
-    # redis_client.set(redis_key , json.dumps(json_data) )
-    # logger.info(log_format(msg=f"save question paylaod in redis Key : {redis_key} , questions : {json.dumps(json_data)}"))
+
+    # Handling Redis Process
+    redis_client = Redis(host="localhost", port=6379, db=0)
+    redis_key = f"{collection_name}:message"
+    #Serialize the resposne for redis storage 
+    json_data =  make_serializable(data)
+    redis_client.set(redis_key , json.dumps(json_data))
+    logger.info(log_format(msg=f"save question paylaod in redis Key : {redis_key} , questions : {json.dumps(json_data)}"))
     return res.inserted_id
+
 
 def make_serializable(data):
     if isinstance(data, dict):
@@ -49,6 +53,8 @@ def make_serializable(data):
     elif isinstance(data, datetime):  
         return data.isoformat()
     return data
+
+
 
 async def chatbot_update_message(db, collection_name, message_id: str, current_question_id : int, update_values: dict):
     """
