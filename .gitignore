@@ -166,5 +166,5 @@ alembic
 /alembic
 __pycache__
 
-.xml
+*.xml
 .idea/inspectionProfiles/profiles_settings.xml
