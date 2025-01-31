@@ -88,14 +88,7 @@ async def save_user_response(db: Session, question_data: dict, response: dict):
     except Exception as e:
         raise Exception("Something went wrong while saving the response.")
     
-async def save_respose_dynamic_db(msg_type , question_field_map_table:str , details_table: str , question_data : dict , response :dict,service_db_session = None):
-    """
-    save_respose_db
-    """
-   
-    initial_question = await save_dynamic_user_response(msg_type,question_field_map_table , details_table,service_db_session ,question_data,response)
-    initial_question = {"id" : initial_question.id  }
-    return initial_question
+
 
 
 
@@ -142,8 +135,8 @@ async def save_dynamic_user_response(msg_type,question_field_map_table ,details_
             # Handle specific cases for question_key and msg_type
             # NOTE : msg_type is fetched from mongo question payload 
             if  (
-                    (question_key == 2 and current_question_key == 1 and msg_type == constant.MsgType.Boolean.value) or 
-                    (question_key == 1 and msg_type != constant.MsgType.Boolean.value)
+                    (question_key == 2 and current_question_key == 1 and msg_type == constant.DataType.Boolean.value) or 
+                    (question_key == 1 and msg_type != constant.DataType.Boolean.value)
                 ):
                 new_row_data = {field_name: None}
                 db.execute(dynamic_details_table.insert().values(**new_row_data))

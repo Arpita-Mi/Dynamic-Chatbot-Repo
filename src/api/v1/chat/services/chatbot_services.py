@@ -4,7 +4,8 @@ from database.db_connection import create_service_db_session
 from sqlalchemy import Integer , String, MetaData , Column , Boolean , JSON
 from database.database_manager import Base
 from src.api.v1.chat.models.question_filed_map_static import dynamic_question_filed_map
-from src.api.v1.chat.repositories.chatbot_repository import save_question_payload_query
+from src.api.v1.chat.services.mongo_services import create_message
+from src.api.v1.chat.repositories.chatbot_repository import save_question_payload_query , save_dynamic_user_response
 from sqlalchemy.orm import Session
 from sqlalchemy import Table, MetaData
 from sqlalchemy.orm import Session
@@ -12,6 +13,42 @@ from sqlalchemy import inspect
 import os
 import shutil
 from logger.logger import logger , log_format
+
+
+
+async def conversation_operations(ChatbotName ,scr, db , user_collection, msg_type):
+        service_db_session, _ = await create_service_db_session()
+
+        ques = create_message(ChatbotName ,scr, scr.question_key)
+        logger.info(f"Created message to save in mongo  mongo  ques : {ques}")
+
+        db[user_collection].insert_one(ques)
+        if "_id" in ques:
+            ques["_id"] = str(ques["_id"])
+            logger.debug(f"Message inserted into MongoDB with ID: {ques['_id']}")
+
+        chatbot_data, chatbot_tables = await fetch_chatbot_table_details(ChatbotName)
+        logger.info(f"Fetched chatbot data and chatbot tables for: {ChatbotName}")
+
+        question_field_map_table = next(
+        (table for table in chatbot_tables if table.endswith("_question_field_map")),
+        None
+        )
+        details_table = next(
+            (table for table in chatbot_tables if table.endswith("_details")),
+            None
+        )
+        # if msg_type == constant.DataType.Boolean.value:
+        #         return
+        if not question_field_map_table:
+            raise Exception("No table matching '_question_field_map' found for the chatbot.")
+        response = await get_question_field_map_resposne(table_name = question_field_map_table , service_db_session=service_db_session ,question_key = scr.question_key)
+        logger.info(f"fetch0 get question field map details  {response}")
+        if response:
+            ques["id"] = scr.id
+            ques["response"] = scr.message
+            ques["current_question_id"] = scr.question_key if scr.question_key == 1 else scr.current_question_id 
+            user_details = await save_respose_dynamic_db(msg_type , question_field_map_table, details_table ,service_db_session=service_db_session ,question_data=ques,response=response)
 
 
 async def get_question_field_map_resposne(table_name : str ,question_key :int , service_db_session = None):
@@ -171,11 +208,11 @@ async def fetch_chatbot_table_details(chatbot_name):
   
 
 def msg_type_to_column(msg_type):
-    if msg_type == constant.MsgType.String.value:
+    if msg_type == constant.DataType.String.value:
         return String
-    elif msg_type == constant.MsgType.Boolean.value:
+    elif msg_type == constant.DataType.Boolean.value:
         return Boolean
-    elif msg_type == constant.MsgType.JSON.value:
+    elif msg_type == constant.DataType.JSON.value:
         return JSON
     else:
         return String 
@@ -221,3 +258,11 @@ def fetch_table_data(engine, table_name):
         return [dict(row._mapping) for row in results]
 
 
+async def save_respose_dynamic_db(msg_type , question_field_map_table:str , details_table: str , question_data : dict , response :dict,service_db_session = None):
+    """
+    save_respose_db
+    """
+   
+    initial_question = await save_dynamic_user_response(msg_type,question_field_map_table , details_table,service_db_session ,question_data,response)
+    initial_question = {"id" : initial_question.id  }
+    return initial_question

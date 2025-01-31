@@ -165,3 +165,6 @@ app/__pycache__/schemas.cpython-38.
 alembic
 /alembic
 __pycache__
+
+.xml
+.idea/inspectionProfiles/profiles_settings.xml

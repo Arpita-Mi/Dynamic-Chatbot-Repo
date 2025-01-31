@@ -22,6 +22,6 @@ class MongoUnitOfWork:
 
 def create_mongo_connection():
     client, db = MongoUnitOfWork().mdb_connect()
-    collection_name = constant.MASTER_COLLECTION
+    master_collection = constant.MASTER_COLLECTION
     user_collection = constant.USER_COLLECTION
-    return db , collection_name , user_collection
+    return db , master_collection , user_collection

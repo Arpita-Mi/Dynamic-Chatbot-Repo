@@ -3,39 +3,39 @@ from bson import ObjectId
 from logger.logger import logger , log_format
 from src.api.v1.chat.schemas.schema import Payload
 from src.api.v1.chat.constants import constant
-from database.db_mongo_connect import MongoUnitOfWork
+from database.db_mongo_connect import create_mongo_connection
 from datetime import datetime
 from redis import Redis
 import json
 
-async def chatbot_save_message_to_mongo_redis(db, collection_name,  message: str):
+async def chatbot_save_message_to_mongo_redis(db, master_collection,  message: str):
     """
     Insert Message Payload to redis for chaching use
     Insert Message after checking and deleting existing data.
     :param db: MongoDB database connection
-    :param collection_name: MongoDB collection name
+    :param master_collection: MongoDB collection name
     :param message: List of messages to insert
     :param language_id: Language ID to check for existing data
     :return:
     """
 
-    existing_data = db[collection_name].find({})  
+    existing_data = db[master_collection].find({})  
     logger.info(log_format(msg = "Check if data already exists for the given language_id"))
     if existing_data:
         logger.info(log_format(msg="Existing document found with _id  deleting..."))
-        delete_result = db[collection_name].delete_many({})
-        logger.info(log_format(msg=f"Deleted {delete_result.deleted_count} records from {collection_name}"))
+        delete_result = db[master_collection].delete_many({})
+        logger.info(log_format(msg=f"Deleted {delete_result.deleted_count} records from {master_collection}"))
 
     logger.info(log_format(msg=f"Inserting new data for message {message}"))
     data = {
         "message": message,
     }
-    res = await insert_data(db, collection_name, data)
+    res = await insert_data(db, master_collection, data)
     logger.info(log_format(msg=f"Inserted ({res.inserted_id}) records"))
 
     # Handling Redis Process
     redis_client = Redis(host="localhost", port=6379, db=0)
-    redis_key = f"{collection_name}:message"
+    redis_key = f"{master_collection}:message"
     #Serialize the resposne for redis storage 
     json_data =  make_serializable(data)
     redis_client.set(redis_key , json.dumps(json_data))
@@ -56,17 +56,17 @@ def make_serializable(data):
 
 
 
-async def chatbot_update_message(db, collection_name, message_id: str, current_question_id : int, update_values: dict):
+async def chatbot_update_message(db, master_collection, message_id: str, current_question_id : int, update_values: dict):
     """
     Update Message
     :param db:
-    :param collection_name:
+    :param master_collection:
     :param message_id:
     :param update_values:
     :return:
     """
     query = {"message": {"$elemMatch": {"question_key": current_question_id }}, "_id" : ObjectId(message_id) }
-    res = await chatbot_update_data(db, collection_name, query , update_values)
+    res = await chatbot_update_data(db, master_collection, query , update_values)
     return res
 
 
@@ -90,7 +90,7 @@ async def update_message(db, user_collection, current_question_id, update_values
     """
     Update Message
     :param db:
-    :param collection_name:
+    :param master_collection:
     :param current_question_id:
     :param update_values:
     :return:
@@ -210,25 +210,25 @@ def generate_image_url(image_data) -> str:
     return image_list
 
 
-
-def get_question_data_from_room(ChatbotName ,room_id):
+def get_question_data_from_room(ChatbotName, room_id):
     """ 
     :param room_id: Description
     :type room_id: 
     :return: Description
     :rtype: list
     """
-    client, db = MongoUnitOfWork().mdb_connect()
-    user_collection  =  f"{ChatbotName}{constant.USER_COLLECTION}"
-    room_data = db[user_collection].find({"room_id": room_id },
-                            {"room_id":0 ,"_id": 0})
+    db, _, user_collection = create_mongo_connection()
+    room_data = db[user_collection].find({"room_id": room_id},
+                                         {"room_id": 0, "_id": 0})
     room_list = list(room_data)
     return room_list
 
+
 def get_msg_type_from_master_mongo(ChatbotName):
-    client, db = MongoUnitOfWork().mdb_connect()
-    mater_collection  = f"{ChatbotName}{constant.MASTER_COLLECTION}"
-    master_data = db[mater_collection].find({})
+
+    db, master_collection, _ = create_mongo_connection()
+    master_collection = f"{ChatbotName}{master_collection}"
+    master_data = db[master_collection].find({})
     # print(list(master_data))
     for record in master_data:
         for message in record.get('message', []):

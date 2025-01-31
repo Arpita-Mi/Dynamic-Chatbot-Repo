@@ -9,18 +9,23 @@ ALEMBIC_INI_PATH =  "/home/mind/Dynamic-Chatbot-Repo-Git-Hub/alembic.ini"
 QUESTION_FIELD_MAP_MODEL_PATH =  "/home/mind/Dynamic-Chatbot-Repo-Git-Hub/src/api/v1/chat/models/question_filed_map_static.py"
 DYNAMIC_QUESTION_FIELD_MAP_MODEL_PATH =  "/home/mind/Dynamic-Chatbot-Repo-Git-Hub/src/api/v1/chat/models/dynamic_question_map_filed"
 
-
 class MsgType(Enum):
+    Text = 1
+    Boolean = 2
+    MultipleSelect = 3
+    SingleSelect = 4
+    Image = 5
+class DataType(Enum):
     String = 1
     Boolean = 2
     JSON = 3
 
 value_to_type = {
-    1:MsgType.String,
-    2:MsgType.Boolean,
-    3:MsgType.JSON,
-    4:MsgType.JSON,
-    5:MsgType.String
+    1:DataType.String,
+    2:DataType.Boolean,
+    3:DataType.JSON,
+    4:DataType.JSON,
+    5:DataType.String
 }
 
 
