@@ -5,7 +5,7 @@ from src.api.v1.chat.repositories.chatbot_repository import fetch_question_paylo
 from src.api.v1.chat.services.mongo_services import chatbot_save_message_to_mongo_redis ,create_message ,construct_response ,update_latest_message, update_latest_message_with_image ,\
 generate_image_url , get_question_data_from_room , get_msg_type_from_master_mongo
 from src.api.v1.chat.services.chatbot_services import get_question_field_map_resposne ,save_respose_db ,create_dynamic_models ,\
-create_question_field_map_dynamic_models , clear_pycache  , conversation_operations 
+create_question_field_map_dynamic_models , clear_pycache  , handle_chatbot_conversation_operations 
 from database.db_mongo_connect import create_mongo_connection
 from database.db_connection import create_service_db_session
 from datetime import datetime
@@ -145,7 +145,7 @@ async def start_chatbot_conversation(request: Request, scr: Form = Depends(Paylo
             msg_type  = get_msg_type_from_master_mongo(ChatbotName)
             logger.debug(f"Message type fetched from master MongoDB: {msg_type}")
 
-            await conversation_operations(ChatbotName ,scr, db , user_collection, msg_type)
+            await handle_chatbot_conversation_operations(ChatbotName ,scr, db , user_collection, msg_type)
 
         elif scr.msg_type in [MsgType.Text.value, MsgType.Boolean.value , MsgType.MultipleSelect.value, MsgType.SingleSelect.value]:     #[1:text , 2:boolean , 3:multiple selection , 4:Single Select]
             #UPDATE THE RESPOSNE TO MONGO
@@ -156,41 +156,43 @@ async def start_chatbot_conversation(request: Request, scr: Form = Depends(Paylo
                 logger.info(f"Updated latest message in MongoDB with message: {scr.message}")
             
             
-            await conversation_operations(ChatbotName ,scr, db , user_collection, scr.msg_type)
+            await handle_chatbot_conversation_operations(ChatbotName ,scr, db , user_collection, scr.msg_type)
            
         
-        elif scr.msg_type == MsgType.Image:   #NOTE : dynamic logic still remaining for images
+        elif scr.msg_type == MsgType.Image.value:   #NOTE : dynamic logic still remaining for images
+            update_list = []
             if latest_message:
                 if image:  # Raw image 
                     image_data =  image
-                    image_url = update_latest_message_with_image(db, latest_message, image_data, user_collection)
+                    image_list = generate_image_url(image_data)
+                    update_list = [i["image_url"] for i in image_list] 
+                    image_url = update_latest_message_with_image(db, latest_message, update_list, user_collection)
                 else:
                     update_latest_message(db, latest_message, scr.message, user_collection)
 
-            ques = create_message(ChatbotName , scr, scr.question_key) #fetch the question details from master db(mongo) and create a dict 
-            db[user_collection].insert_one(ques)
-            if "_id" in ques:
-                ques["_id"] = str(ques["_id"])
+            # ques = create_message(ChatbotName , scr, scr.question_key) #fetch the question details from master db(mongo) and create a dict 
+            # db[user_collection].insert_one(ques)
+            # if "_id" in ques:
+            #     ques["_id"] = str(ques["_id"])
 
-            #SAVE RESPOSNE TO DATABASE
-            update_list = []
-            image_list = generate_image_url(image_data)
-            for i in image_list:
-      
-                update_list.append( i["image_url"])
-            response = await get_question_field_map_resposne(service_db_session=service_db_session ,question_key = scr.question_key)
-            if response:
-                ques["id"] = scr.id
-                ques["response"] = update_list
-                ques["current_question_id"] = scr.current_question_id
-                user_details = await save_respose_db(service_db_session=service_db_session ,question_data=ques,response=response)
-                return user_details
-            return None
+            # #SAVE RESPOSNE TO DATABASE
+
+            # response = await get_question_field_map_resposne(service_db_session=service_db_session ,question_key = scr.question_key)
+            # if response:
+            #     ques["id"] = scr.id
+            #     ques["response"] = update_list
+            #     ques["current_question_id"] = scr.current_question_id
+            #     user_details = await save_respose_db(service_db_session=service_db_session ,question_data=ques,response=response)
+            #     return user_details
+            # return None
+
+            await handle_chatbot_conversation_operations(ChatbotName ,scr, db , user_collection, scr.msg_type , update_list)
 
         return construct_response(ChatbotName , scr, scr.question_key)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+["create_message","fetch_chatbot_table_details","get_question_field_map_resposne" ,"save_respose_dynamic_db"]
 
 
 @router.get("/chatbot/retrive_conversation", summary="dynamic chatbot conversation",

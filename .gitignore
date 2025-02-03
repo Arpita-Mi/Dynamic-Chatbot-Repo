@@ -168,3 +168,5 @@ __pycache__
 
 *.xml
 .idea/inspectionProfiles/profiles_settings.xml
+.vscode/
+.idea/

@@ -145,7 +145,7 @@ def update_latest_message( db,  latest_message, response_message, user_collectio
         {"_id": latest_message["_id"]}, {"$set": update_values}
     )
 
-def update_latest_message_with_image(db,  latest_message, image_data, user_collection):
+def update_latest_message_with_image(db,  latest_message, update_list, user_collection):
     """
     update_latest_message_with_image
     
@@ -161,16 +161,10 @@ def update_latest_message_with_image(db,  latest_message, image_data, user_colle
     :rtype: str
     """
     time_now = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-    update_list = []
-    image_list = generate_image_url(image_data)
-    for i in image_list:
-      
-        update_list.append( i["image_url"])
-   
     db[user_collection].update_one(
         {"_id": latest_message["_id"]}, {"$set": {"message.response"  : update_list , "message.response_time" : time_now} }
     )
-    return image_list
+    return update_list
 
 
 

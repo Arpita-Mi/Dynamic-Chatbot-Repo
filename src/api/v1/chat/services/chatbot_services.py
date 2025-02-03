@@ -16,7 +16,20 @@ from logger.logger import logger , log_format
 
 
 
-async def conversation_operations(ChatbotName ,scr, db , user_collection, msg_type):
+async def handle_chatbot_conversation_operations(ChatbotName ,scr, db , user_collection, msg_type, updated_list = None):
+        """
+        1. Inserts the message into the user collection of the MongoDB database.
+        2. Fetches chatbot-related table details from the database.
+        3. Retrieves the question field mapping response based on the chatbot's current state.
+        4. Saves the chatbot's response and associated details to the database.
+
+        Args:
+            ChatbotName (str): The name of the chatbot for which the message is being processed.
+            scr (object): The object containing the question and message details.
+            db (object): The database object for MongoDB.
+            user_collection (str): The name of the user collection in the database.
+            msg_type (str): The type of message (e.g., Boolean, Text).
+        """
         service_db_session, _ = await create_service_db_session()
 
         ques = create_message(ChatbotName ,scr, scr.question_key)
@@ -43,13 +56,15 @@ async def conversation_operations(ChatbotName ,scr, db , user_collection, msg_ty
         if not question_field_map_table:
             raise Exception("No table matching '_question_field_map' found for the chatbot.")
         response = await get_question_field_map_resposne(table_name = question_field_map_table , service_db_session=service_db_session ,question_key = scr.question_key)
-        logger.info(f"fetch0 get question field map details  {response}")
+        logger.info(f"fetch get question field map details  {response}")
         if response:
             ques["id"] = scr.id
-            ques["response"] = scr.message
+            ques["response"] = scr.message if msg_type != constant.MsgType.Image.value else updated_list
             ques["current_question_id"] = scr.question_key if scr.question_key == 1 else scr.current_question_id 
             user_details = await save_respose_dynamic_db(msg_type , question_field_map_table, details_table ,service_db_session=service_db_session ,question_data=ques,response=response)
 
+
+["create_message","fetch_chatbot_table_details","get_question_field_map_resposne" ,"save_respose_dynamic_db"]
 
 async def get_question_field_map_resposne(table_name : str ,question_key :int , service_db_session = None):
     """
