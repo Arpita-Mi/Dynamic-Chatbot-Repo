@@ -64,7 +64,6 @@ async def handle_chatbot_conversation_operations(ChatbotName ,scr, db , user_col
             user_details = await save_respose_dynamic_db(msg_type , question_field_map_table, details_table ,service_db_session=service_db_session ,question_data=ques,response=response)
 
 
-["create_message","fetch_chatbot_table_details","get_question_field_map_resposne" ,"save_respose_dynamic_db"]
 
 async def get_question_field_map_resposne(table_name : str ,question_key :int , service_db_session = None):
     """

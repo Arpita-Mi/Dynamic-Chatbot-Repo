@@ -170,29 +170,12 @@ async def start_chatbot_conversation(request: Request, scr: Form = Depends(Paylo
                 else:
                     update_latest_message(db, latest_message, scr.message, user_collection)
 
-            # ques = create_message(ChatbotName , scr, scr.question_key) #fetch the question details from master db(mongo) and create a dict 
-            # db[user_collection].insert_one(ques)
-            # if "_id" in ques:
-            #     ques["_id"] = str(ques["_id"])
-
-            # #SAVE RESPOSNE TO DATABASE
-
-            # response = await get_question_field_map_resposne(service_db_session=service_db_session ,question_key = scr.question_key)
-            # if response:
-            #     ques["id"] = scr.id
-            #     ques["response"] = update_list
-            #     ques["current_question_id"] = scr.current_question_id
-            #     user_details = await save_respose_db(service_db_session=service_db_session ,question_data=ques,response=response)
-            #     return user_details
-            # return None
-
             await handle_chatbot_conversation_operations(ChatbotName ,scr, db , user_collection, scr.msg_type , update_list)
 
         return construct_response(ChatbotName , scr, scr.question_key)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-["create_message","fetch_chatbot_table_details","get_question_field_map_resposne" ,"save_respose_dynamic_db"]
 
 
 @router.get("/chatbot/retrive_conversation", summary="dynamic chatbot conversation",
